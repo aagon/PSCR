@@ -1,0 +1,202 @@
+#+TITLE : Prise de notes CM 4I400 PSCR
+#+PROPERTY: header-args :mkdirp yes
+#+STARTUP: inlineimages
+
+Yann Thierry-Mieg (yann.thierry-mieg@lip6.fr)
+4I400
+
+* Informations pratiques
+
+** Références
+
+Des références de C++, des références de concurrence, des rappels de C.
+
+
+* Cours 1 : 16/09/2019
+
+** C et C++ (et Java)
+
+C++ presque sur-ensemble du C98
+
+On retrouve les :
+
+- types de données (variantes non signées)
+- struct, tableaux, pointeurs
+- partage mémoire entre le tas et la pile
+
+En plus :
+
+- Objet, classes, instances
+- Namespace (fonctions rangées dans des paquets)
+- Typage nouveau : référence
+- Annotation const
+- Polymorphisme
+
+
+Par rapport à Java :
+
+- Mêmes notions de classe, surcharge, héritage, même genre de syntaxe.
+- On gère la mémoire nous-même
+- Généricité un peu moins propre. Implanté dans le compilateur par une succession de macros. (en Java, erasetype)
+- Accès à la mémoire et au noyau (pas de VM), beaucoup plus performant.
+- En contrepartie, on a la réflexion, introspection, dynamicité
+
+On écrit les bibliothèques en C++, et on assemble avec Python (3 !).
+
+** Du C au C++ : un exemple
+
+On reprend la structure d'un programme C propre, avec déclaration et implémentation séparée, puis un main séparé.
+
+#pragma once
+Défense contre les doubles déclarations.
+
+*** Préprocesseur
+
+PréProcesseur se contente de résoudre les include pour faire un gros fichier.
+
+*** Compilation :
+
+Chaque fichier (non en-tête) source est compilé séparément.
+Petite vérifications syntaxique (déclaration et typage, grossièrement).
+
+Le .o qui sort est le code assembleur (agglomération d'une série de fonction).
+
+*** Edition de liens :
+
+On va chercher dans le main.o les références externes, on va chercher le référencé dans le point.o, on inclut.
+
+On peut lier de deux manière :
+- statique (On recopie les fonctions), complet, pas de dépendances runtime
+- dynamique (seulement pour la lib standard ?, on laisse la référence), incomplet, il faut que la lib soit là, sinon ça marche pas : il reste des dépendances runtime.
+
+*** Constituer une bibliothèque
+
+On compile 
+
+ar(1) se contente de mettre des .o bout à bout.
+.a lib statique
+
+g++ -shared
+.so (.dll sous Windows) lib dynamique
+
+g++ -l<lib> <main> : liaison dynamique
+g++ <lib> <main> : liaison statique
+
+ldd(1) donne la liste des lib dépendances runtime d'un exécutable.
+
+*** Le binaire et le processus
+
+Le processus a une plage d'adresse (virtuelles) de 0 jusqu'à la taille du pointeur (2^64) : la mémoire vue par le processus (beaucoup plus que la vraie mémoire, on se doute).
+
+L'OS doit traduire la mémoire virtuelle en adresse mémoire physique.
+
+Le binaire va dans le segment de code de l'espace d'adressage du processus.
+Segment stack
+Main tout en bas.
+
+Les adresses en dessous sont illégitimes sauf si elles ont été réservées explicitement (malloc ou new) : sinon, segfault.
+
+On a aussi une liste des descripteurs de fichier et des entrées et sorties standard.
+
+*** Rappel sur C et le passage des paramètres par copie
+
+Ne pas se faire avoir si on veut que les fonctions fassent vraiment quelque chose en dehors de leur stack frame.
+
+*** C++, innovations
+
+Struct et class, c'est presque la même chose en C++.
+Struct tous les champs sont publics par défaut, class sont tous privés par défaut.
+
+Constructeur, porte le même nom que la classe.
+L'autre méthode n'a pas besoin de paramètres, c'est le contexte courant (on y accèdera par 'this').
+
+Chaque class ou struct définit implicitement un namespace homonyme.
+
+Pointeur particulier "this" vers l'objet courant.
+(Donc en fait chaque fonction admet un paramètre implicite, le pointeur vers l'objet courant)
+
+polymorphisme : opération valable sur plusieurs types, capable de reconnaître un type et d'agir en conséquence.
+
+** Les bases du C++
+
+Idée que les opérateurs peuvent être redéfinis.
+
+#+BEGIN_SRC c++
+  #include <iostream>
+
+  int main()
+  {
+	  std::cout << "Hello, World !" << std::endl;
+	  return 0;
+  }
+#+END_SRC
+
+Ici les opérateurs << et >> sont redéfinissables. Ce sont des flux, connectables sur plein d'autres choses que les entrées et sorties standard.
+
+char * est interprété par cet opérateur comme un string.
+
+*** Les types
+
+Beaucoup trop.
+
+Un type booléen (assez inutile)
+Le nullptr, comme le NULL de C. (comparaisons avec d'autres types autorisés, contrairement à NULL).
+
+*** Les opérateurs
+
+Beaucoup beaucoup trop.
+
+Ne pas hésiter à mettre beaucoup de parenthèses.
+
+Certains opérateurs peuvent être redéfinis. (liste complète dans le support).
+
+[C'est vraiment un langage de connard. On n'a vraiment pas envie de se poser des questions, ni d'être rigoureux.]
+
+*** Mots-clés
+
+const
+
+const dans les paramètres : pas de modification dans le corps de la fonction (juste pour déboguage, pas utilisable en soi, passage par copie)
+
+const avec un pointeur ou une référence dans les paramètres permet de cumuler la sécurité du passage par valeur et la vitesse du passage par référence
+
+Passage par référence :
+
+#+BEGIN_SRC c++
+  void nique(int& i)
+  {
+	  int a = 30;
+	  i = a;
+  }
+
+  int main()
+  {
+	  int x = 100;
+	  std::cout << x << std::endl;
+	  nique(x);
+	  std::cout << x << std::endl;
+	  return 0;
+  }
+#+END_SRC
+
+Différence avec le pointeur (on ne déréférence pas avec *), et la référence ne peut pas être nulle.
+
+On ne peut pas passer un littéral par référence : en effet, leur adresse est dans une zone de la mémoire protégée en écriture.
+
+On peut retourner une référence en retour de fonction.
+
+La référence doit toujours être initialisée, on peut l'assimiler à un pointeur constant.
+
+"Const, c'est comme la GPL, c'est contaminant"
+
+
+* Cours 2 : 23/09/2019
+
+** Classe, instance, allocation
+
+** Surcharge, polymorphisme, résolution
+
+
+* Annexes
+
+
