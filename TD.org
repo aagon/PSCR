@@ -1,0 +1,185 @@
+#+TITLE : Prise de notes TD 4I400 PSCR
+#+PROPERTY: header-args :mkdirp yes
+#+STARTUP: inlineimages
+
+Yann Thierry-Mieg (yann.thierry-mieg@lip6.fr)
+4I400
+
+* TD 1 : 27/09/2019
+
+** 1.1 Rappels chaîne du C, const
+
+*** Question 1
+
+#+BEGIN_SRC c++
+  unsigned int length(const char *string);
+  char *newcopy(const char *string);
+#+END_SRC
+
+*** Question 2
+
+Pour faire ça proprement, on créé un fichier pr.h (fichier d'en-tête), dans lequel on met les signatures, et un autre fichier pr.c, dans lequel on mettra l'implémentation.
+
+#+BEGIN_SRC c++ :tangle ./TDTME1/strutil.h
+  // Dans un fichier d'en tête (en .h)
+
+  #pragma once
+  #include <cstring>
+
+  namespace pscr {
+
+	  size_t length(const char *string);
+	  char *newcopy(char *string);
+  }
+#+END_SRC
+
+On peut aussi se débrouiller avec ifndef, define, endif, à la C.
+
+*** Questions 3 et 4 et 5
+
+La vraie manière, à la Linus :
+
+#+BEGIN_SRC c++ :tangle ./TDTME1/strutil.cpp
+  // Dans un fichier source, .cpp
+
+  #include "strutil.h"
+  #include <cstring>
+
+  namespace pscr {
+
+	  size_t length(const char *string)
+	  {
+		  size_t size = 0;
+
+		  for ( ; string; string++, size++);
+
+		  return size;
+	  }
+
+	  char *newcopy(char *string)
+	  {
+		  size_t n = length(string);
+		  char *ptr = new char[n+1] ;
+
+		  while (string - 1) {
+			  ++ptr = ++string;
+		  }
+
+		  return ptr;
+	  }
+
+  }
+#+END_SRC
+
+*** Question 6
+
+#+BEGIN_SRC c++
+  #include <cstring>
+
+  char *newcopy(const char *string)
+  {
+	  size_t n = length(string);
+	  char *ptr = new char[n+1] ;
+
+	  memcpy(ptr, string, n + 1);
+
+	  return ptr;
+  }
+#+END_SRC
+
+*** Question 7
+
+#+BEGIN_SRC c++ :tangle ./TDTME1/exo1.cpp
+  #include "strutil.h"
+  #include <iostream>
+
+  using namespace pscr;
+  using namespace std;
+
+  int main()
+  {
+	  char *str = "Hello World !";
+	  char *copy = newcopy(str);
+
+	  std::cout << str << (*str) << length(str) << std::endl;
+	  cout << copy << (*copy) << length(copy) << endl;
+
+	  delete[] copy;
+
+	  return 0;
+  }
+#+END_SRC
+
+*** Question 8
+
+Pour compiler toute cette saloperie :
+
+#+BEGIN_SRC shell
+  g++ -std=c++1y -O0 -g3 -Wall -c -o "/chemin/vers/strutil.o" /chemin/vers/strutil.cpp
+
+  g++ -std=c++1y -O0 -g3 -Wall -c -o "/chemin/vers/exo1.o" /chemin/vers/exo1.cpp
+
+  g++ -o /chemin/vers/exo1 /chemin/vers/strutil.o /chemin/vers/exo1.o
+
+  /chemin/vers/exo1 # pour lancer le programme
+
+  valgrind --leak-check=full --track-origins=yes /chemin/vers/exo1
+#+END_SRC
+
+En plus, ça marche pas. Gros langage de merde.
+
+[à reprendre]
+
+** Une classe String
+
+*** Question 9 et 10 : opérateur
+
+#+BEGIN_SRC c++ :tangle ./string.h
+  #pragma once
+
+  #include <cstring>
+  #include <iostream>
+
+  namespace pscr {
+
+	  class String {
+		  friend std::ostream & operator<< (ostream &os, const pscr::String &str);
+		  const char *str;
+	  public:
+		  String(const char* ori);
+		  size_t length() const;
+	  };
+
+	  std::ostream & operator<< (ostream &os, const pscr::String &str);
+  }
+#+END_SRC
+
+#+BEGIN_SRC c++ :tangle ./string.cpp
+  #include "string.h"
+  #include "strutil.h"
+  #include <iostream>
+
+  using namespace std;
+
+  namespace pscr {
+
+	  String::String(const char *ori):str(ori)
+	  {}
+
+	  size_t String::length() const
+	  {
+		  return pscr::length(str);
+	  }
+
+	  ostream & operator<< (ostream &os, const pscr::String &s)
+	  {
+		  return os << s.str;
+	  }
+  }
+#+END_SRC
+
+*** Question 11
+
+abc pointe vers un endroit de la mémoire où il n'y a plus rien de légal.
+
+

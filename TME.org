@@ -1,0 +1,120 @@
+#+TITLE : Prise de notes TME 4I400 PSCR
+#+PROPERTY: header-args :mkdirp yes
+#+STARTUP: inlineimages
+
+Yann Thierry-Mieg (yann.thierry-mieg@lip6.fr)
+4I400
+
+* TME 1 : 27/09/2019
+
+** 1.2 Prise en main de non-Eclipse
+
+*** Question 1
+
+Non applicable, on ne se sert pas d'Eclipse.
+
+*** Question 2
+
+On fait un hello world :
+
+#+BEGIN_SRC c++ :tangle ./TDTME1/TME1/helloworld.cpp
+  #include <iostream>
+
+  using namespace std;
+
+  int main()
+  {
+	  cout << "Hello World !" << endl;
+	  return 0;
+  }
+#+END_SRC
+
+*** Question 3
+
+Non applicable, on ne se sert pas d'Eclipse.
+
+*** Question 4
+
+Afficher le contenu d'un tableau créé :
+
+#+BEGIN_SRC c++ :tangle ./TDTME1/TME1/tab.cpp
+  #include <iostream>
+
+  using namespace std;
+
+  int main()
+  {
+	  int tab[10];
+
+	  for (int i = 0; i < 10; ++i) {
+		  tab[i] = i;
+		  cout << i << " ";
+	  }
+
+	  cout << endl;
+
+	  return 0;
+  }
+#+END_SRC
+
+*** Question 5
+
+#+BEGIN_SRC c++ :tangle ./TDTME1/TME1/debug.cpp
+  #include <iostream>
+
+  using namespace std;
+
+  int main()
+  {
+	  int tab[10];
+
+	  for (int i = 0; i < 10; ++i) {
+		  tab[i] = i;
+	  }
+
+	  for (size_t i=9; i > 0 ; i--) {
+
+		  if (tab[i] - tab[i-1] != 1) {
+			  cout << "probleme !";
+		  }
+	  }
+
+	  return 0;
+  }
+
+
+
+#+END_SRC
+
+On est censé découvrir le debugger intégré.
+
+On se servira de gdb : compiler avec le flag -g, mettre le breakpoint à la bonne ligne.
+
+*** Question 6
+
+On se sert de gdb pour regarder ce qu'il se passe :
+
+Au breakpoint :
+
+(gdb) print i
+$1 = 0
+(gdb) print tab
+$2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+
+Un cycle de boucle plus tard :
+
+(gdb) print i
+$3 = 18446744073709551615
+
+En effet : size_t correspond à l'entier non-signé qu'on peut écrire sur un mot mémoire de la machine (8 octets), donc unsigned long int.
+
+Quand i passe en dessous de 0 (car la condition d'arrêt le permet), il est interprété comme le plus grand nombre écrivable sur 8 octets, soit 2^64 (+on imagine+ on a vérifié 18446744073709551615)
+
+Il faut et il suffit d'écrire correctement la condition d'arrêt, pour ne pas permettre i de passer en-dessous de 0 :
+
+i > 0 sur la condition d'arrêt.
+
+
+
+
+
