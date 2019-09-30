@@ -6,5 +6,5 @@
 namespace pscr {
 
 	size_t length(const char *string);
-	char *newcopy(char *string);
+	char *newcopy(const char *string);
 }

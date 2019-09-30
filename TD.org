@@ -18,9 +18,9 @@ Yann Thierry-Mieg (yann.thierry-mieg@lip6.fr)
 
 *** Question 2
 
-Pour faire ça proprement, on créé un fichier pr.h (fichier d'en-tête), dans lequel on met les signatures, et un autre fichier pr.c, dans lequel on mettra l'implémentation.
+Pour faire ça proprement, on créé un fichier strutil.h (fichier d'en-tête), dans lequel on met les signatures, et un autre fichier pr.c, dans lequel on mettra l'implémentation.
 
-#+BEGIN_SRC c++ :tangle ./TDTME1/strutil.h
+#+BEGIN_SRC c++ :tangle ./TDTME1/TD1/strutil.h
   // Dans un fichier d'en tête (en .h)
 
   #pragma once
@@ -29,7 +29,7 @@ Pour faire ça proprement, on créé un fichier pr.h (fichier d'en-tête), dans 
   namespace pscr {
 
 	  size_t length(const char *string);
-	  char *newcopy(char *string);
+	  char *newcopy(const char *string);
   }
 #+END_SRC
 
@@ -39,11 +39,12 @@ On peut aussi se débrouiller avec ifndef, define, endif, à la C.
 
 La vraie manière, à la Linus :
 
-#+BEGIN_SRC c++ :tangle ./TDTME1/strutil.cpp
+#+BEGIN_SRC c++ :tangle ./TDTME1/TD1/strutil.cpp
   // Dans un fichier source, .cpp
 
   #include "strutil.h"
   #include <cstring>
+  #include <cstdlib>
 
   namespace pscr {
 
@@ -51,21 +52,23 @@ La vraie manière, à la Linus :
 	  {
 		  size_t size = 0;
 
-		  for ( ; string; string++, size++);
+		  for ( ; *string; string++, size++);
 
 		  return size;
 	  }
 
-	  char *newcopy(char *string)
+	  char *newcopy(const char *string)
 	  {
 		  size_t n = length(string);
-		  char *ptr = new char[n+1] ;
+		  char *ptr = new char[n+1];
 
-		  while (string - 1) {
-			  ++ptr = ++string;
+		  while (*string) {
+			  ,*ptr++ = *string++;
 		  }
 
-		  return ptr;
+		  ,*ptr = '\0';
+
+		  return ptr - n;
 	  }
 
   }
@@ -89,26 +92,50 @@ La vraie manière, à la Linus :
 
 *** Question 7
 
-#+BEGIN_SRC c++ :tangle ./TDTME1/exo1.cpp
+#+BEGIN_SRC c++ :tangle ./TDTME1/TD1/exo1.cpp
   #include "strutil.h"
   #include <iostream>
+  #include <cstdio>
+
+  #include <cstdlib>
 
   using namespace pscr;
   using namespace std;
 
   int main()
   {
-	  char *str = "Hello World !";
+	  const char *str = "Hello World !";
 	  char *copy = newcopy(str);
 
-	  std::cout << str << (*str) << length(str) << std::endl;
-	  cout << copy << (*copy) << length(copy) << endl;
+	  printf("%p %s %lu\n", str, str, length(str));
+	  printf("%p %s %lu\n", copy, copy, length(copy));
 
 	  delete[] copy;
 
 	  return 0;
   }
 #+END_SRC
+
+Remarque :
+
+C++ est scandaleux : str est imprimé comme un string, et pas comme une adresse.
+On doit écrire :
+
+#+BEGIN_SRC c++
+  cout << &str << " " << str << " " << length(str) << endl;
+  cout << &copy << " " << copy << " " << length(copy) << endl;
+#+END_SRC
+
+Alors qu'on penserait, à raison :
+
+#+BEGIN_SRC c++
+  cout << str << " " << *str << " " << length(str) << endl;
+  cout << copy << " " << *copy << " " << length(copy) << endl;
+#+END_SRC
+
+De plus, &str ne représente pas l'adresse str du tas, mais l'adresse du pointeur vers str (dans la pile donc), dont on a absolument rien à foutre.
+
+On n'arrive pas à forcer une erreur de segmentation, malgré un débordement de tampon forcé ? (Ni en C avec malloc, ni en C++ avec new)
 
 *** Question 8
 
@@ -123,18 +150,16 @@ Pour compiler toute cette saloperie :
 
   /chemin/vers/exo1 # pour lancer le programme
 
-  valgrind --leak-check=full --track-origins=yes /chemin/vers/exo1
+  valgrind --leak-check=full --track-origins=yes /chemin/vers/exo1 # pour vérifier les fuites de mémoire
 #+END_SRC
 
-En plus, ça marche pas. Gros langage de merde.
-
-[à reprendre]
+On s'est permis de faire un Makefile.
 
 ** Une classe String
 
 *** Question 9 et 10 : opérateur
 
-#+BEGIN_SRC c++ :tangle ./string.h
+#+BEGIN_SRC c++ :tangle ./TDTME1/TD1/string.h
   #pragma once
 
   #include <cstring>
@@ -154,7 +179,7 @@ En plus, ça marche pas. Gros langage de merde.
   }
 #+END_SRC
 
-#+BEGIN_SRC c++ :tangle ./string.cpp
+#+BEGIN_SRC c++ :tangle ./TDTME1/TD1/string.cpp
   #include "string.h"
   #include "strutil.h"
   #include <iostream>
@@ -182,4 +207,11 @@ En plus, ça marche pas. Gros langage de merde.
 
 abc pointe vers un endroit de la mémoire où il n'y a plus rien de légal.
 
+
+
+* Annexes
+
+Les supports de TD :
+
+[[./TDTME1/tdtme1.pdf][TD 1]]
 

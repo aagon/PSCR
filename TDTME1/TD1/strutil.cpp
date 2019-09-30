@@ -2,6 +2,7 @@
 
 #include "strutil.h"
 #include <cstring>
+#include <cstdlib>
 
 namespace pscr {
 
@@ -9,21 +10,23 @@ namespace pscr {
 	{
 		size_t size = 0;
 
-		for ( ; string; string++, size++);
+		for ( ; *string; string++, size++);
 
 		return size;
 	}
 
-	char *newcopy(char *string)
+	char *newcopy(const char *string)
 	{
 		size_t n = length(string);
-		char *ptr = new char[n+1] ;
+		char *ptr = new char[n+1];
 
-		while (string - 1) {
-			++ptr = ++string;
+		while (*string) {
+			*ptr++ = *string++;
 		}
 
-		return ptr;
+		*ptr = '\0';
+
+		return ptr - n;
 	}
 
 }

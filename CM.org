@@ -196,7 +196,7 @@ La référence doit toujours être initialisée, on peut l'assimiler à un point
 
 ** Surcharge, polymorphisme, résolution
 
-
+#+BEGIN_DEFINITION
 Surcharge
 
 Deux fonctions qui font la même chose sur des types d'objets différents, peuvent se voir donner le même nom.
@@ -207,6 +207,7 @@ Le compilateur essaie de trouver la signature qui correspond le plus. Il peut y 
 Pas exactement comme un cast. Il y a une conversion, pas juste une réinterprétation.
 
 On ne peut pas distinguer des fonctions par leur valeur de retour : on peut avoir const et non-const, ce qui change la signature.
+#+END_DEFINITION
 
 On peut définir des valeurs par défaut pour les arguments :
 
@@ -240,10 +241,9 @@ Un constructeur est une méthode spéciale d'une classe :
 
 *** new
 
-Il faut distinguer l'espace d'adresage virtuel et la mémoire physique.
+Il faut distinguer l'espace d'adressage virtuel et la mémoire physique.
 
 Le principe de new (et de malloc aussi, en fait), c'est de réserver une zone de l'espace d'adressage et de créer une correspondance avec la mémoire physique.
-
 
 *** Initialisation
 
