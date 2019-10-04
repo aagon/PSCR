@@ -119,11 +119,11 @@ La vraie manière, à la Linus :
 Remarque :
 
 C++ est scandaleux : str est imprimé comme un string, et pas comme une adresse.
-On doit écrire :
+Pour faire ce qu'on a fait avec printf, on doit écrire :
 
 #+BEGIN_SRC c++
-  cout << &str << " " << str << " " << length(str) << endl;
-  cout << &copy << " " << copy << " " << length(copy) << endl;
+  cout << (void *)str << " " << str << " " << length(str) << endl;
+  cout << (void *)copy << " " << copy << " " << length(copy) << endl;
 #+END_SRC
 
 Alors qu'on penserait, à raison :
@@ -133,9 +133,10 @@ Alors qu'on penserait, à raison :
   cout << copy << " " << *copy << " " << length(copy) << endl;
 #+END_SRC
 
-De plus, &str ne représente pas l'adresse str du tas, mais l'adresse du pointeur vers str (dans la pile donc), dont on a absolument rien à foutre.
+En fait cout voit que str pointe sur un caractère et voit le caractère '\0'. Il interprète ça comme une string.
 
 On n'arrive pas à forcer une erreur de segmentation, malgré un débordement de tampon forcé ? (Ni en C avec malloc, ni en C++ avec new)
+
 
 *** Question 8
 
@@ -206,6 +207,232 @@ On s'est permis de faire un Makefile.
 *** Question 11
 
 abc pointe vers un endroit de la mémoire où il n'y a plus rien de légal.
+
+
+
+* TD 2 : 04/10/2019
+
+** 1.1 Copie et affectation
+
+#+BEGIN_SRC c++
+  #pragma once
+  #include <cstddef> // size_t
+  #include "strutil.h"
+
+  namespace pr {
+	  class String {
+		  const char * str;
+	  public:
+		  String(const char *cstr=""): str(newcopy(cstr)){};
+		  virtual ~String() { delete [] str;}
+		  size_t length() const { return pr::length(str);};
+	  };
+  } // fin namespace pr
+#+END_SRC
+
+*** Question 1
+
+Le problème, c'est que vu que l'appel String ne se résout pas vers une fonction définie par l'utilisateur : elle résout vers une version par défaut du compilateur.
+
+La version par défaut du compilateur construit par copie.
+
+Elle copie donc la référence str, aliasant la chaîne déjà dans le tas.
+
+Quand je sors du scope avec les crochets, le stack frame du pointeur est dépilé, et donc le destructeur est appelé par défaut.
+
+Donc le contenu du tas pointé par abc et def et désalloué.
+
+Quand je fais référence au même octet avec abc , j'ai :
+
+Undefined behaviour. On a pas forcément toujours segfault.
+
+
+Deuxième problème.
+
+= va se résoudre sur la version par défaut de l'opérateur =.
+Va juste copier la référence (pointeur) str, on va avoir le même problème en pire.
+
+Sauf que l'autre chaîne du tas n'aura plus de référence, et donc on a une fuite.
+
+Si la classe contient un pointeur, il va falloir redéfinir le constructeur, le destructeur, l'opérateur = et la copie.
+
+*** Question 2
+
+En se servant des primitives de la semaine dernière :
+
+
+#+BEGIN_SRC c++
+  #pragma once
+  #include <cstddef> // size_t
+  #include "strutil.h"
+
+  namespace pr {
+	  class String {
+		  const char * str;
+	  public:
+		  // Cteur avec constante
+		  String(const char *cstr=""): str(newcopy(cstr)){};
+		  // Dteur
+		  virtual ~String() { delete [] str;}
+		  // Taille
+		  size_t length() const { return pr::length(str);};
+
+		  // Cteur par copie
+		  String(const String &other) {
+			  str = newcopy(other.str);
+		  }
+
+		  // Opérateur =
+		  String & operator= (const String &other) {
+			  if (&other != this) {
+				  delete[] this->str;
+				  str = newcopy(other.str);
+			  }
+		  }
+	  };
+  } // fin namespace pr
+
+#+END_SRC
+
+Dans tous les cas où on a des pointeurs dans les classes, il faut absolument définir ces choses-là.
+
+** 1.2 Vecteur : Stockage contigü
+
+*** Question 3
+
+Implémentons nous-même la classe Vector.
+On a de la généricité (on peut définir des Vector de int ou float, ou autre chose)
+
+Quand on a une classe générique, on écrit le code dans le .h (en effet, on a besoin )
+
+#+BEGIN_SRC c++
+  // Vector.h ou un truc du genre
+
+  #pragma once
+  #include <cstddef> // size_t
+
+  namespace pr {
+	  template <typename T>
+
+	  class Vector {
+	  private:
+		  T *tab;
+		  size_t alloc_sz;
+		  size_t size;
+	  public:
+		  Vector(size_t asize=10) {
+			  size = 0;
+			  alloc_sz = asize;
+			  tab = new T[alloc_sz];
+		  }
+
+		  ~Vector() {
+			  delete[] tab;
+		  }
+		  // On devrait ici avoir un cteur par copie
+		  // Un opérateur =
+
+		  T& operator[](size_t index) {
+			  return tab[index];
+		  }
+
+		  const T& operator[](size_t index) const {
+			  return tab[index];
+		  }
+
+		  void push_back(const t& obj) {
+			  ensureCapacity(size + 1);
+			  tab[size++] = obj;
+		  }
+
+		  int ensureCapacity(size_t n) {
+			  if (n >= alloc_sz) {
+				  T *tmp = new T[alloc_sz * 2];
+
+				  for (int i = 0; i < size; ++i) {
+					  tmp[i] = tab[i];
+				  }
+
+				  delete []tab;
+
+				  tab = tmp;
+				  return alloc_sz * 2;
+			  }
+
+			  return alloc_sz;
+		  }
+	  };
+  }
+#+END_SRC
+
+En fait la référence, c'est un pointeur toujours déréférencé.
+
+On doit dédoubler l'opérateur [], parce que probablement quelque part, quelqu'un a écrit un opérateur qui prend une référence const. Si j'essaie de me servir de cet opérateur, je ne peux pas compiler. Le const, c'est la chienlit.
+
+Le const après la déclaration d'une méthode porte sur le premier paramètre implicite de la méthode, le this.
+
+Pourquoi alloc_sz * 2 ? La réponse en cours d'ALGAV.
+
+** 1.3 Liste chaînée
+
+*** Question 4
+
+#+BEGIN_SRC c++
+  // list.h ou un truc du genre
+
+  #pragma once
+  #include <cstddef> // size_t
+
+  namespace pr {
+	  template <typename T>
+
+	  class list {
+		  struct Chainon {
+			  T data;
+			  Chainon *next;
+			  Chainon(const T& data, Chainon *next) : data(data),next(next) {}
+		  };
+
+		  Chainon *tete;
+	  public:
+		  list() {
+			  tete = nullptr;
+		  }
+
+		  void push_front(const T& data) {
+			  tete = new Chainon(data,tete);
+		  }
+
+		  T& operator[] (size_t index) {
+			  Chainon *cur = tete;
+
+			  for (int i = 0; i < index; ++i) {
+				  cur = cur->next;
+			  }
+
+			  return cur->data;
+		  }
+
+		  const T& operator[] (size_t index) const {
+			  Chainon *cur = tete;
+
+			  for (int i = 0; i < index; ++i) {
+				  cur = cur->next;
+			  }
+
+			  return cur->data;
+		  }
+
+
+
+	  };
+
+  }
+#+END_SRC
+
+** 1.4 Table de hachage
+
+
 
 
 

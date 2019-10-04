@@ -280,10 +280,167 @@ Toute fonction peut être déclarée amie d'une ou plusieurs classes.
 Une fonction amie peut accéder directement aux éléments privés de la classe, sans passer par une méthode.
 
 
+* Cours 3 : 30/09/2019
+
+** Template
+
+#+BEGIN_SRC c++
+  template <typename T>
+  T sum (T a, T b)
+  {
+	  return a + b;
+  }
+#+END_SRC
+
+(classname fonctionne aussi)
+
+Le compilateur va générer une fonction qui correspond au type.
+
+Directement dans les fichiers d'en-tête.
+
+On peut forcer une promotion de type :
+
+#+BEGIN_SRC c++
+  sum<string>('a', 'b');
+#+END_SRC
+
+On peut faire la même chose avec des classes
+
+#+BEGIN_SRC c++
+  template <typename T>
+  class mypair {
+	  T values[2];
+  public:
+	  mypair(T first, T second) {
+		  values[0] = first;
+		  values[1] = second;
+	  }
+  };
+#+END_SRC
+
+auto mot-clé introduit en C++11, permet au compilateur d'inférer le type de données.
+
+#+BEGIN_SRC c++
+  auto d = 5.0;
+  auto i = 1 + 2;
+#+END_SRC
+
+On peut mettre auto en retour de fonction à partir de C++14
+
+Existe en copie (auto) et en référence (auto &)
+
+Pratique mais casse-gueule.
+
+** La bibliothèque standard
+
+*** La lib standard C
+
+Apparemment, la bibliothèque standard de C est "vide".
+
+Inclut la lib standard du C.
+
+Pour se servir d'une bibliothèque C :
+
+#+BEGIN_SRC c++
+  extern "C" {
+
+	  // Déclaration des fonctions et en-têtes C
+
+  }
+#+END_SRC
+
+*** La lib standard C++
+
+- iosfwd : en-têtes
+- flux I/O standard
+- flux fichiers (lecture écriture simultanée) : Descripteur de fichier, mais par flux.
+- sstream (tampons mémoire).
+
+Le flux vient de l'idée qu'on ne veut pas surallouer. Dans une opération complexe, on préfère faire les opérations simples successives sur un même objet dynamique, le flux.
+
+*** Utility
+
+Les opérateurs relatifs sont définis ici.
+
+Le == entre les strings en C++ compare les noms (en C, il compare les pointeurs).
+Le + entre une string et un entier se comprend comme de l'arithmétique des pointeurs : on se décale dans la string.
+
+*** Les REGEX
+
+Dans le cas des données simples, peut permettre de se passer d'une grammaire et d'un parser.
+Peut manipuler les strings comme sed ou awk aurait permis de le faire.
+
+** Les conteneurs
+
+Il en existe un certain nombre dans la lib standard
+
+*** Vector
+Stockage contigu en mémoire. Accès à n'importe quel élément en temps constant.
+
+Stockage compact, pas de surcoût mémoire.
+C'est la manière canonique de faire de l'allocation dynamique (plus que new ou malloc).
+
+Bonne continuité spatiale, se cache bien.
+
+Insertion en milieu de vecteur : O(n)
+
+*** List
+Liste doublement chaînée.
+Insertion en milieu de liste O(1) : d'autres
+Pas cachable : mauvaise continuité
+
+*** dequeue
+Pareil que le vecteur, mais queue à deux fins : les opérations en queue et en tête sont très peu chères (par rapport au vecteur, pour qui les opérations en tête sont coûteuses)
+
+*** set
+Arbre binaire (R/N)
+Très bon pour la recherche : log(n)
+Efficace pour l'insertion : log(n)
+
+*** Points communs
+
+T le type des éléments
+allocateur
+Comparaison, hachage
+
+begin et end : itérateurs pratiques (end est past the end)
+
+Mais c'est tout.
+
+Tous les itérateurs ne se valent pas. Selon le conteneur, plus ou moins d'opérateurs sont supportés.
+
+[Tableau complet ici]
+
+*** Les conteneurs associatifs
+
+*** Hachage
+
+Il y a toujours des collisions.
+
+On obtient une valeur difficilement réversible.
+
+On fait % le nombre d'éléments du bucket : endroit où je vais chercher dans ma table.
+
+Comparaison d'égalité.
+
+
+La seule manière d'être dans un mauvais jour, c'est la collision (plutôt la modulo-collision) : on chaîne les structures de dépassement à la première en mode liste chaînée.
+
+Une bonne fonction de hachage est uniforme, on remplit bien les buckets.
+Une mauvaise fonction de hachage met tous les éléments dans le même bucket, qui devient une très longue liste chaînée.
+
+On aime aussi bien les fonctions de hachage qui mettent loin les entrées proches les unes des autres.
+
+*** Memory
+
+Ensemble de pointeurs intelligents, capables de désallouer la mémoire dès qu'un compteur de références tombe à 0 (version unique et partagée).
+
+
 * Annexes
 
 Les supports de cours :
 
 [[./CM1/cours1.pdf][Cours 1]]
 [[./CM2/cours2.pdf][Cours 2]]
+[[./CM3/cours3.pdf][Cours 3]]
 
