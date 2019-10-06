@@ -432,6 +432,149 @@ Pourquoi alloc_sz * 2 ? La réponse en cours d'ALGAV.
 
 ** 1.4 Table de hachage
 
+*** Question 5 et 6
+
+La meilleure manière d'accéder au nombre d'éléments stockés dans la table (size), c'est d'enregistrer cette valeur au fur et à mesure qu'on rajoute des valeurs.
+
+Le calcul de la taille requiert d'itérer sur tous les éléments du vecteur, puis sur tous les éléments de la liste chaînée : obtenir la taille d'une liste chaînée simple est une opération non-triviale, de complexité au pire cas O(n).
+
+On se permet donc de créer un champ dans privé qui contient la taille, initialisé dans les constructeurs (pour permettre la bonne valeur d'être mise lors d'une construction par copie).
+
+On donne ici notre implémentation complète de la table de hachage, qui se sert autant qu'il est possible des fonctions de la bibliothèque standard (plutôt que nos implémentations).
+
+#+BEGIN_SRC c++ :tangle ./TDTME2/TD2/hash.cpp
+  #include <iostream>
+  #include <fstream>
+  #include <regex>
+  #include <chrono>
+
+  #include <vector>
+  #include <utility>
+  #include <forward_list>
+
+  using namespace std;
+
+  template <typename K, typename V>
+  class HashMap {
+
+	  struct Entry {
+		  const K key;
+		  V value;
+		  Entry(const K& key, const V& value) : key(key), value(value) {}
+	  };
+	  std::vector <std::forward_list<Entry>> buckets;
+	  size_t nb_stored_values;
+
+  public:
+
+	  HashMap(size_t size) {
+		  buckets.resize(size);
+		  nb_stored_values = 0;
+	  }
+
+	  HashMap() {
+		  buckets.resize(256);
+		  nb_stored_values = 0;
+	  }
+
+	  V* get(const K& key) {
+		  size_t h = std::hash <K>()(key);
+		  h = h % buckets.size();
+
+		  for (Entry& ent : buckets[h]) {
+			  if (ent.key == key) {
+				  return &ent.value;
+			  }
+		  }
+
+		  return nullptr;
+	  }
+
+	  bool put(const K& key, const V& value) {
+		  size_t h = std::hash <K>()(key);
+		  h = h % buckets.size();
+
+		  for (Entry& ent : buckets[h]) {
+			  if (ent.key == key) {
+				  ent.value = value;
+				  return true;
+			  }
+		  }
+
+		  buckets[h].push_front(Entry(key, value));
+		  this->nb_stored_values++;
+		  return false;
+	  }
+
+	  bool del(const K& key) {
+		  size_t h = std::hash <K>()(key);
+		  h = h % buckets.size();
+
+		  auto prev = buckets[h].before_begin();
+		  for (auto it = buckets[h].before_begin();
+		       it != buckets[h].end();) {
+			  prev = it;
+			  if ((++it)->key == key) {
+				  buckets[h].erase_after(prev);
+				  nb_stored_values--;
+				  return true;
+			  }
+		  }
+		  return false;
+	  }
+
+	  size_t nb_buckets() const {
+		  return buckets.size();
+	  }
+
+	  size_t size() const {
+		  return nb_stored_values;
+	  }
+
+	  void grow() {
+		  size_t former_size = buckets.size();
+
+		  HashMap nouvelle_map(2 * former_size);
+
+		  K temp_key;
+		  V temp_value;
+		  size_t temp_nb_values = 0;
+
+		  for (int i = 0; i < former_size ; i++) {
+			  while (buckets[i].empty() != 1) {
+				  temp_key = buckets[i].front().key;
+				  temp_value = buckets[i].front().value;
+				  buckets[i].pop_front();
+				  nb_stored_values--;
+				  nouvelle_map.put(temp_key, temp_value);
+				  temp_nb_values++;
+			  }
+		  }
+
+		  buckets.swap(nouvelle_map.buckets);
+		  this->nb_stored_values = temp_nb_values;
+		  nouvelle_map.buckets.clear();
+	  }
+
+  };
+
+  int main()
+  {
+	  HashMap<int,int> test;
+
+	  test.put(1,15);
+	  cout << *(test.get(1)) << endl;
+	  cout << test.nb_buckets() << endl;
+	  cout << test.size() << endl;
+	  test.grow();
+	  cout << test.nb_buckets() << endl;
+	  cout << test.size() << endl;
+	  cout << *(test.get(1)) << endl;
+	  test.put(2,16);
+	  cout << test.size() << endl;
+	  return 0;
+  }
+#+END_SRC
 
 
 

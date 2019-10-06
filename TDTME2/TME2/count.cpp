@@ -65,13 +65,13 @@ int main ()
 
 	cout << "Found a total of " << unique_words_and_count.size() << " unique words." << endl;
 
-	cout << "Found a total of " << occurences_mot("war", unique_words_and_count) << " occurrences of the world war." << endl;
+	cout << "Found a total of " << occurences_mot("war", unique_words_and_count) << " occurrences of the word war." << endl;
 
-	cout << "Found a total of " << occurences_mot("peace", unique_words_and_count) << " occurrences of the world peace." << endl;
+	cout << "Found a total of " << occurences_mot("peace", unique_words_and_count) << " occurrences of the word peace." << endl;
 
-	cout << "Found a total of " << occurences_mot("napoleon", unique_words_and_count) << " occurrences of the world napoleon." << endl;
+	cout << "Found a total of " << occurences_mot("napoleon", unique_words_and_count) << " occurrences of the word napoleon." << endl;
 
-	cout << "Found a total of " << occurences_mot("pierre", unique_words_and_count) << " occurrences of the world pierre." << endl;
+	cout << "Found a total of " << occurences_mot("pierre", unique_words_and_count) << " occurrences of the word pierre." << endl;
 
 	return 0;
 }
