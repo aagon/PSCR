@@ -579,6 +579,283 @@ On donne ici notre implémentation complète de la table de hachage, qui se sert
 
 
 
+* TD 3 : 11/10/2019
+
+*** Question 1
+
+Retour sur l'expansion de foreach
+
+#+BEGIN_SRC c++
+  for (T& elt : vec) {
+  //body
+  }
+#+END_SRC
+
+Correspond à :
+
+#+BEGIN_SRC c++
+  for (auto it = vec.begin(), end = vec.end();
+       it != end;
+       ++it) {
+	  T& elt = *it;
+  // body
+  }
+#+END_SRC
+
+Les conditions pour que ça marche :
+- auto a,b requiert que a et b aient le même type
+- conteneur doit disposer des fonctions begin et end qui rendent chacun un itérateur
+- itérateur doit disposer d'un opérateur !=, doit disposer d'un opérateur ++ (pré-incrément), et d'un opérateur *
+
+*** Question 2
+
+#+BEGIN_SRC c++
+
+  template <typename T>
+
+  class Vector<T> {
+	  T *tab;
+	  size_t size;
+	  size_t alloc_size;
+
+  public:
+	  typedef T * iterator;
+	  typedef const T * const_iterator;
+
+	  iterator begin() {
+		  return tab;
+	  }
+
+	  iterator end() {
+		  return tab + size;
+	  }
+
+	  const_iterator begin() const {
+		  return tab;
+	  }
+
+	  const_iterator end() const {
+		  return tab + size;
+	  }
+
+  }
+#+END_SRC
+
+Supposons que l'itérateur est simplement un pointeur nu vers T.
+
+Est-ce que les opérations par défaut sur les pointeurs nus se conforment au contrat demandé par l'expansion de la boucle foreach ?
+
+- On a bien un opérateur != fonctionnel entre deux adresses : il donne bien la sémantique qu'on veut.
+- On a bien un opérateur ++ : il augmente l'adresse de la taille de l'objet pointé : nous fait augmenter d'une case exactement, bien ce qu'on demande.
+- On a bien un opérateur * : il déréférence l'adresse du machin pointé, ce qui correspond bien à une référence (pointeur toujours déréférencé)
+
+Si je pose begin = &toto[0] et end = &toto[size], ça marche (voir la méthode plus haut, avec la coquetterie du typedef)
+
+*** Question 3
+
+La même question, avec une liste chaînée.
+
+#+BEGIN_SRC c++
+  template <typename T>
+
+  class List<T> {
+
+	  struct Chainon {
+		  T donnee;
+		  T* suivant;
+	  };
+
+	  struct Chainon *tete;
+
+  public:
+
+	  class iterator {
+		  Chainon *courant;
+
+	  public:
+		  iterator(Chainon *courant : courant(courant)) {}
+
+		  iterator& operator++() {
+			  return courant->suivant;
+		  }
+
+		  T& operator*() {
+			  return courant->donnee;
+		  }
+
+		  bool operator!=(const iterator& other) {
+			  return (cur != other.cur);
+		  }
+
+	  };
+
+	  class const_iterator {
+		  const Chainon *courant;
+
+	  public:
+		  const_iterator(const Chainon *courant : courant(courant)) {}
+
+		  const_iterator& operator++() {
+			  return courant->suivant;
+		  }
+
+		  const T& operator*() {
+			  return courant->donnee;
+		  }
+
+		  bool operator!=(const const_iterator& other) {
+			  return (cur != other.cur);
+		  }
+
+	  };
+
+
+	  const_iterator begin() const {
+		  return const_iterator(tete);
+	  }
+
+	  const_iterator end() const {
+		  return const_iterator(nullptr);
+	  }
+
+	  iterator begin() {
+		  return iterator(tete);
+	  }
+
+	  iterator end() {
+		  return iterator(nullptr);
+	  }
+
+
+  }
+#+END_SRC
+
+On va devoir définir l'opérateur ++ pour faire cur = cur->suivant;
+
+On va devoir définir l'opérateur * pour aller chercher juste donnee, plutôt que le chaînon entier.
+
+!= n'a pas besoin de manipulation.
+
+end() devra rendre un nullptr
+begin() rendra tete
+
+*** Préparation TME
+
+On va créer un itérateur sur notre table de hachage.
+
+On va avoir dans la classe itérateur un itérateur sur le vecteur de liste et un itérateur sur une liste :
+
+vit : vector<forward_list<Entry>>::iterator
+lit : forward_list<Entry>::iterator
+
+vit va pointer sur la case du vecteur
+lit va pointer sur l'entrée
+
+la fonction begin va rendre la première entrée valable
+la fonction end va rendre vit = &vector[size] (past the end) et lit = nullptr.
+
+*** Question 6
+
+Fonction find
+
+#+BEGIN_SRC c++
+  template <typename iterator, typename T>
+
+  iterator find(iterator begin, iterator end, const T& target)
+  {
+	  for (auto it = begin; it != end; ++it) {
+		  if (*it == target) return it;
+	  }
+
+	  return end;
+  }
+#+END_SRC
+
+A dire vrai, notre code compilera seulement si cette fonction est appelée sur des itérateurs qui disposent d'une opération * et ++ idoine.
+
+Sous des hypothèses généreuses, on peut se permettre de coder de manière aussi triviale.
+
+On stocke l'itérateur retour de la fonction find dans une variable (auto, on s'emmerde pas. En vrai conteneur_sur_lequel_on_linvoque::iterator)
+
+Et si la variable est différente de end, alors on peut l'afficher.
+
+*** Question 7
+
+Même question avec find_if (on remplace le target par un prédicat, de manière à se donner plus de flexibilité)
+
+#+BEGIN_SRC c++
+  bool matches(const T& elt);
+#+END_SRC
+
+On s'en fout de ce que matches teste, on veut juste qu'il ait bien cette signature.
+
+#+BEGIN_SRC c++
+  template <typename iterator, typename T>
+
+  iterator find_if(iterator begin, iterator end, predicate<+> pred)
+  {
+	  for (auto it = begin; it != end; ++it) {
+		  if (pred(*it)) return it;
+	  }
+
+	  return end;
+  }
+#+END_SRC
+
+On a trois manières de passer la fonction de test :
+
+- Pointeur de fonction, à la C
+- Foncteur, espèce d'objet-fonction
+- Lambda, fonction anonyme
+
+La première manière, on écrit la fonction, et on passe le nom de la fonction comme troisième paramètre à la fonction find_if.
+
+La deuxième manière, on définit une struct matcher, par exemple :
+
+#+BEGIN_SRC c++
+  struct matcher {
+	  bool operator() (const string &s) {
+		  return s.length() == 3;
+	  }
+  };
+#+END_SRC
+
+Ensuite on instancie la classe en une instance m, et on appelle :
+
+#+BEGIN_SRC c++
+  matcher m;
+
+  auto it = find_if(vec.begin(), vec.end(), m)
+#+END_SRC
+(aucun intérêt par rapport à la première manière, et non supporté sur des standards plus vieux, donc nul)
+
+
+La troisème manière, la plus moderne (supportée depuis quand ???) :
+
+#+BEGIN_SRC c++
+  auto it = find_if(vec.begin(), vec.end(), [](const string &s) {return s.length() == 3});
+#+END_SRC
+
+*** Question 8
+
+On doit introduire une variable n pour le test.
+
+Pour la solution à la C, on doit créer une globale : NON
+
+Dans la version foncteur, on peut ajouter n comme attribut de la structure matcher (peut-être le seul intérêt du foncteur à ce jour, probablement).
+
+Dans la version lambda, on fait intervenir la liste de capture : 
+
+#+BEGIN_SRC c++
+  auto it = find_if(vec.begin(), vec.end(), [n](const string &s) {return s.length() == 3});
+#+END_SRC
+
+[n] : prend la variable n par copie
+[&n] : prends la variable n par référence
+[&] : prends toutes les variables que j'utilise, par référence
+[=] : prends toutes les variables que j'utilise, par copie
+
+
 * Annexes
 
 Les supports de TD :

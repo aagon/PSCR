@@ -409,7 +409,7 @@ Mais c'est tout.
 
 Tous les itérateurs ne se valent pas. Selon le conteneur, plus ou moins d'opérateurs sont supportés.
 
-[Tableau complet ici]
+[[./CM3/iterateurs.jpg][Tableau des itérateurs]]
 
 *** Les conteneurs associatifs
 
@@ -436,6 +436,215 @@ On aime aussi bien les fonctions de hachage qui mettent loin les entrées proche
 Ensemble de pointeurs intelligents, capables de désallouer la mémoire dès qu'un compteur de références tombe à 0 (version unique et partagée).
 
 
+* Cours 4 : 07/10/2019
+
+** Les conteneurs, suites
+
+*** algorithms
+
+Un ensemble de fonctions utiles présents sur la plupart des conteneurs.
+
+Se séparent entre les algorithmes sans modification, et les algorithmes avec modification.
+
+Plusieurs genres de fonction de recherche :
+- Rendent un itérateur sur le résultat.
+
+remove va juste shift les trucs enlevés à la fin, et changer la valeur de l'itérateur end sur la première des valeurs supprimées (soit juste après la fin des )
+erase va effectivement supprimer les cases.
+
+Remove rend un itérateur vers le premier élément qu'on a foutu à la fin, si on la met dans une variable auto on peut ensuite erase à partir de la variable.
+
+*** Aparté sur les pointeurs de fonction, foncteurs et lambdas
+
+En C
+
+#+BEGIN_SRC c
+  int foo(int x)
+  {
+	  return x;
+  }
+
+  int main()
+  {
+	  int (*fcnPtr) (int) = foo; // pointeur d'un fonction qui prend int et qui rend int
+		  (*fcnPtr)(5);
+	  fcnPtr(5);
+	  return 0;
+  }
+
+#+END_SRC
+
+Notion de foncteur étend le pointeur de fonction.
+[Reprendre]
+
+Sinon, pointeur sur des fonctions anonymes (lambda)
+
+[] (paramètres) -> type_retour {corps} peut remplacer un pointeur de fonction.
+[=variable_contexte], [=] par copie tout, [&] par référence tout : permet de capturer des variables du contexte local pour les donner à lambda.
+
+#+BEGIN_QUOTE
+Pointeur du tableau nu est homogène à un itérateur.
+#+END_QUOTE
+
+** Programmation concurrente
+
+On n'arrive pas à dépasser 5GHz.
+
+L'augmentation des transistors passe par l'augmentation du nombre de coeurs.
+
+Il faut gérer la concurrence.
+
+*** Problèmes
+
+L'exécution n'est plus séquentielle.
+Enormément d'actions ne sont pas liées logiquement et chronologiquement les unes entre les autres.
+
+Plein d'exécutions possibles du programme.
+
+K étapes, N threads \to K^N entrelacements.
+
+On doit correctement introduire un certain nombre de synchronisations, pour exprimer explicitement les précédences entre les fils.
+
+On réduit le champ des exécutions légitimes du programme, de manière à s'assurer de ce qu'on veut.
+
+*** Loi d'Amdahl
+
+Chaque algorithmes dispose d'une partie séquentielle (pas accélérable) et une partie parallélisable (accélérable de manière proportionnelle en )
+
+On plafonne à partir du moment où n le nombres de processeurs dépasse les opérations après découpage.
+
+*** Problèmes, suite
+
+**** Ressources critiques, non-atomicité, conditions de course
+
+Ressources aux accès concurrents : ressources critiques.
+Pas d'atomicité des instructions du C++ (et même pas en C non plus). 1 ligne de C++ produit N instructions assembleur impossibles à compter.
+C est un peu meilleur, on a presque une correspondance 1 pour 1.
+Data Race Condition : Celui qui a écrit en dernier a raison sur la valeur de la variable.
+
+**** Interblocages
+
+Chacun demande une ressource pas dans le même ordre, si on manque de chance, on peut bloquer tous les fils.
+Problème des philosophes, Edgar Dijkstra (1955).
+
+**** Non-déterminisme
+
+Explosion de l'espace d'état : on a plein d'exécutions possibles.
+On ne fait aucune hypothèse sur l'ordonnanceur, il fait ce qu'il veut, on ne le contrôle pas.
+
+On doit penser à l'ordonnanceur comme mon ennemi (c'est le Malin Génie), pour s'assurer de ce que l'exécution se passe comme on veut.
+
+Difficulté de reproduire les problèmes.
+
+La distribution de probabilité est en effet défavorable aux fautes de concurrence.
+La commutation doit se passer au pire moment pour que la faute se produise : très peu probable sur un nombre fini d'exécutions.
+Mais avec un nombre d'exécutions qui augmente, la proba tend vers 1.
+
+** Les fils d'exécution du C++11
+
+POSIX intègre les fils d'exécution dans la bibliothèque standard de C : spécifique aux machines POSIX.
+C++11 l'intègre directement dans le langage.
+
+Les fils d'exécution n'ont aucune protection sur leur pile par rapport aux autres fils d'exécution du même processus lourd : *espace d'adressage commun !!!!*
+
+Chaque thread soit avoir  :
+- Un mini-PCB (avec son pointeur de pile et son PC)
+- une pile
+- Tous ses attributs utilisés par l'ordonnanceur
+- Traitement des signaux
+
+En gros tout ce qui implique les interactions avec le noyau en tant que processus indépendant.
+
+#+BEGIN_THEOREM
+Les printf peuvent masquer les erreurs : printf est une E/S, elle force l'ordonnancement, on réduit l'espace d'état.
+#+END_THEOREM
+
+*** std::thread
+
+A l'instanciation, on lui passe un pointeur de fonction, puis les arguments de la fonction.
+
+L'objet thread se termine quand il sort de la fonction : il est en état "zombie" (pas vraiment, mais c'est l'idée). Un join permet de récupérer son état.
+
+#+BEGIN_SRC c++
+  #include <iostream>
+  #include <thread>
+
+  void foo()
+  {
+	  // Faire des trucs
+  }
+
+  int main()
+  {
+	  // Créer un thread avec foo un pointeur de fonction
+	  std::thread first (foo);
+
+	  // On peut faire d'autres trucs ici
+
+	  first.join(); // On attend first.
+
+	  std::cout << "foo completed" << std::endl;
+	  return 0;
+  }
+
+#+END_SRC
+
+Passage de paramètres :
+
+Passage de références pose problème : autant une variable par copie est toujours valable dans une fonction (elles sont copiées localement, elles vivent dans la pile de la fonction), autant une référence (soit un pointeur déjà déréférencé) peut bien mourir (arrêter d'être légitime) à n'importe quelle moment de la vie du thread, sans que ce soit controllable par lui.
+
+C'est au programmeur de garantir sa vie.
+
+Elle est passée avec std::ref (référence) ou std::cref (pointeur).
+
+Pas de valeur de retour de la fonction passée au thread : il faut modifier des données partagées (attention à la synchronisation).
+
+#+BEGIN_SRC c++
+  void f1(int n, bool b);
+  void f2(int& n);
+
+  int main()
+  {
+	  int value = 0;
+	  std::thread t1(f1, value + 1, true);
+	  std::thread t2(f2, std::ref(value));
+
+	  // Faire des trucs
+	  t1.join();
+	  t2.join();
+	  return 0;
+  }
+#+END_SRC
+
+**** yield
+
+Demande explicite (pas contraignante) de commutation.
+Laisse l'occasion aux autres threads de prendre la main.
+Dépend des plateformes (évident : implique l'ordonnanceur)
+
+**** sleep_for et sleep_until
+
+Endormir le thread qui appelle.
+Variante sleep_until.
+
+La durée du sleep n'est pas garantie : au moins la durée demandée, mais en fait plus.
+
+Vivent dans le namespace this_thread
+
+**** thread détaché
+
+Détacher un thread permet de ne pas mettre de join, ils se termineront avec le main. (On ne doit pas avoir bien besoin de lui, si ce qu'il fait n'a pas besoin d'être join). Cas typique : statistiques d'arrière-plan.
+
+*** std::atomic
+
+atomic_boolean_flag
+
+[Ajouter slides Carlinet]
+
+Garantit l'atomicité de seulement un certain nombre d'opérations (seules les opérations bit par bit).
+
+
+
 * Annexes
 
 Les supports de cours :
@@ -443,4 +652,6 @@ Les supports de cours :
 [[./CM1/cours1.pdf][Cours 1]]
 [[./CM2/cours2.pdf][Cours 2]]
 [[./CM3/cours3.pdf][Cours 3]]
+[[./CM4/cours4.pdf][Cours 4]]
+
 
