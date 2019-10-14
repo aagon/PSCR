@@ -825,7 +825,7 @@ Ensuite on instancie la classe en une instance m, et on appelle :
 #+BEGIN_SRC c++
   matcher m;
 
-  auto it = find_if(vec.begin(), vec.end(), m)
+  auto it = find_if(vec.begin(), vec.end(), m("un string"))
 #+END_SRC
 (aucun intérêt par rapport à la première manière, et non supporté sur des standards plus vieux, donc nul)
 
@@ -844,7 +844,7 @@ Pour la solution à la C, on doit créer une globale : NON
 
 Dans la version foncteur, on peut ajouter n comme attribut de la structure matcher (peut-être le seul intérêt du foncteur à ce jour, probablement).
 
-Dans la version lambda, on fait intervenir la liste de capture : 
+Dans la version lambda, on fait intervenir la liste de capture vue en cours : 
 
 #+BEGIN_SRC c++
   auto it = find_if(vec.begin(), vec.end(), [n](const string &s) {return s.length() == 3});

@@ -12,12 +12,16 @@ using namespace std;
 template <typename K, typename V>
 class HashMap {
 
+public:
 	struct Entry {
 		const K key;
 		V value;
 		Entry(const K& key, const V& value) : key(key), value(value) {}
 	};
-	std::vector <std::forward_list<Entry>> buckets;
+
+private:
+	typedef std::vector<std::forward_list<Entry>> buckets_t;
+	buckets_t buckets;
 	size_t nb_stored_values;
 
 public:
@@ -49,7 +53,7 @@ public:
 		V temp_value;
 		size_t temp_nb_values = 0;
 
-		for (int i = 0; i < former_size ; i++) {
+		for (size_t i = 0; i < former_size ; i++) {
 			while (buckets[i].empty() != 1) {
 				temp_key = buckets[i].front().key;
 				temp_value = buckets[i].front().value;
@@ -139,25 +143,22 @@ public:
 		typename std::vector<std::forward_list<Entry>>::iterator vit;
 		typename std::forward_list<Entry>::iterator lit;
 
-		iterator () {}
+		buckets_t *buckets;
 
-		iterator & operator++() {
-			auto copy_lit = lit;
+		iterator (buckets_t &buckets) : buckets(&buckets) {}
 
-			if (!(++copy_lit->empty())) {
-				++lit;
-				return *this;
-			}
+		iterator &operator++() {
 
-			for (auto it = vit; it != buckets.end(); ++it) {
-				if (!(it->empty())) {
-					vit = it;
-					lit = it->begin();
-					return *this;
+			++lit;
+			if (lit != vit->begin()) return *this;
+
+			while (++vit -> empty() && vit != buckets->end()) {
+				if (vit != buckets->end()) {
+					lit = vit->begin();
 				}
 			}
 
-			return nullptr;
+			return *this;
 		}
 
 		bool operator!=(iterator & other) {
@@ -166,9 +167,9 @@ public:
 	};
 
 	iterator begin() {
-		iterator temp;
+		auto temp = iterator(&buckets);
 
-		for (int i = 0; i < buckets.size() ; ++i) {
+		for (size_t i = 0; i < buckets.size() ; ++i) {
 			if (buckets[i].empty()) {
 				temp.vit = buckets.begin() + i;
 				temp.lit = temp.vit->begin();
@@ -180,7 +181,8 @@ public:
 	}
 
 	iterator end() {
-		iterator temp;
+		auto temp = iterator(&buckets);
+
 		temp.lit = buckets[buckets.size() - 1].end();
 		temp.vit = buckets.end();
 
@@ -243,6 +245,8 @@ int main ()
 	cout << "We need " << table.nb_buckets() << " buckets" << endl;
 
 	cout << "On trouve " << *(table.get("pierre")) << " occurences du mot pierre" << endl;
+
+	cout << "On a bien begin différend de end" << (table.begin() != table.end()) << endl;
 
 	cout << "Il y a " << table.count(table.begin(), table.end()) << " mots" << endl;
 

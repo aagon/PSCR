@@ -150,8 +150,6 @@ Ne pas hésiter à mettre beaucoup de parenthèses.
 
 Certains opérateurs peuvent être redéfinis. (liste complète dans le support).
 
-[C'est vraiment un langage de connard. On n'a vraiment pas envie de se poser des questions, ni d'être rigoureux.]
-
 *** Mots-clés
 
 const
@@ -449,14 +447,14 @@ Se séparent entre les algorithmes sans modification, et les algorithmes avec mo
 Plusieurs genres de fonction de recherche :
 - Rendent un itérateur sur le résultat.
 
-remove va juste shift les trucs enlevés à la fin, et changer la valeur de l'itérateur end sur la première des valeurs supprimées (soit juste après la fin des )
+remove va juste shift les trucs enlevés à la fin, et changer la valeur de l'itérateur end sur la première des valeurs supprimées (soit juste après la fin des valeurs non enlevées)
 erase va effectivement supprimer les cases.
 
 Remove rend un itérateur vers le premier élément qu'on a foutu à la fin, si on la met dans une variable auto on peut ensuite erase à partir de la variable.
 
 *** Aparté sur les pointeurs de fonction, foncteurs et lambdas
 
-En C
+En C, on utilise le pointeur de fonction.
 
 #+BEGIN_SRC c
   int foo(int x)
@@ -467,23 +465,28 @@ En C
   int main()
   {
 	  int (*fcnPtr) (int) = foo; // pointeur d'un fonction qui prend int et qui rend int
-		  (*fcnPtr)(5);
-	  fcnPtr(5);
+	  (*fcnPtr)(5); // On appelle foo via son pointeur de fonction
+	  fcnPtr(5); // On a aussi une déréférence implicite : fait la même chose que la ligne précédente
 	  return 0;
   }
 
 #+END_SRC
 
 Notion de foncteur étend le pointeur de fonction.
-[Reprendre]
+
+En gros, le foncteur est un objet avec un opérateur () défini, ce qui fait qu'il peut être appelé comme une fonction, *pourvu qu'on ait pris la peine de l'instancier avant (il faut bien entendu que l'opérateur soit dans la zone publique de l'object foncteur)*.
 
 Sinon, pointeur sur des fonctions anonymes (lambda)
 
-[] (paramètres) -> type_retour {corps} peut remplacer un pointeur de fonction.
-[=variable_contexte], [=] par copie tout, [&] par référence tout : permet de capturer des variables du contexte local pour les donner à lambda.
+[](paramètres) -> type_retour {corps} peut remplacer un pointeur de fonction.
+[variable à inclure par copie], [&variable à inclure par référence], [=] par copie tout, [&] par référence tout : permet de capturer des variables du contexte local pour les donner à lambda.
+
+Tout ne signifie pas exactement tout : le compilateur est chargé de ramener ce qu'on utilise effectivement dans le corps de la lambda.
 
 #+BEGIN_QUOTE
 Pointeur du tableau nu est homogène à un itérateur.
+
+Yann Thierry-Mieg
 #+END_QUOTE
 
 ** Programmation concurrente
@@ -639,10 +642,9 @@ Détacher un thread permet de ne pas mettre de join, ils se termineront avec le 
 
 atomic_boolean_flag
 
-[Ajouter slides Carlinet]
+On se réfèrera aux diapositives 27-32 du cours 4 pour une illustration de l'implémentation matérielle.
 
 Garantit l'atomicité de seulement un certain nombre d'opérations (seules les opérations bit par bit).
-
 
 
 * Annexes
