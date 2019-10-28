@@ -11,6 +11,23 @@ Yann Thierry-Mieg (yann.thierry-mieg@lip6.fr)
 
 Des références de C++, des références de concurrence, des rappels de C.
 
+** Partiel
+
+Makefile pour chaque exo.
+
+Débogage
+Implanter une synchro
+Exercice de correction de code à cause de synchro
+
+TDTME de la dernière semaine (mutex et conditions variables, moitié des points)
+Structure de données pas trop dure, implémenter une fonction
+Makefile simple.
+
+Petit bout de code à déboguer éventuellement (en deux parties : une compilation, une erreurs franches).
+
+valgrind
+
+14-15 302 : pas le home (les programmes précompilés doivent devenir)
 
 * Cours 1 : 16/09/2019
 
@@ -434,7 +451,7 @@ On aime aussi bien les fonctions de hachage qui mettent loin les entrées proche
 Ensemble de pointeurs intelligents, capables de désallouer la mémoire dès qu'un compteur de références tombe à 0 (version unique et partagée).
 
 
-* Cours 4 : 07/10/2019
+* Cours 4 : 07/10/2019 et 14/10/2019
 
 ** Les conteneurs, suites
 
@@ -642,9 +659,165 @@ Détacher un thread permet de ne pas mettre de join, ils se termineront avec le 
 
 atomic_boolean_flag
 
-On se réfèrera aux diapositives 27-32 du cours 4 pour une illustration de l'implémentation matérielle.
+On se réfèrera aux diapositives 27-32 du cours 4 pour une illustration de l'implémentation matérielle. Carlinet.
 
 Garantit l'atomicité de seulement un certain nombre d'opérations (seules les opérations bit par bit).
+
+*** std::mutex
+
+Sur une *section critique* (suite d'action cohérente), permet de protéger la section :
+
+La structure ressemble à ça :
+- Une file de threads bloqués
+- Un booléen qui dit si le verrou est ouvert ou fermé (dans le cas d'un sémaphore, )
+
+FIFO garantie (mais pas vraiment, l'ordonnanceur fait toujours un peu ce qu'il veut).
+Au réveil, le processus élu essaie de récupérer le lock tout seul.
+
+Le mutex doit être le même pour les différents threads (sinon ça sert à rien).
+
+Mutex récursifs : On a la possibilité avec une autre structure (std::recursive_mutex) de reprendre en plus le lock (à nouveau).
+
+Il ne faut pas oublier le unlock !
+
+unique_lock se détruit tout seul à la sortie de la portée.
+
+#+BEGIN_SRC c++
+  unique_lock <mutex> lock(gi_mutex);
+#+END_SRC
+
+Issu du principe RAII : si je sort du scope, il faut libérer.
+
+Quel que soit la sortie, je suis garanti de ce que le lock est libéré. (confort, mais absolument pas nécessaire, et potentiellement casse-gueule).
+
+*** Multithread-safe
+
+Une classe multithread-safe est un classe qui implémente directement en elle-même la gestion de la synchronisation.
+
+Comment se faire une classe multithread-safe :
+
+On se donne un mutex comme attribut
+On met des unique_lock dans toutes les méthodes
+
+mutable devant le nom d'un attribut reste modifiable malgré le caractère const d'une méthode.
+
+Si les méthodes de la classe s'invoquent les unes les autres ??
+recursive_mutex permet de réacquérir le lock déjà acquis.
+
+Mutex spécifiques au problème du lecteur-rédacteur : va sûrement être implanté en TME ou en partiel.
+
+*** Interblocage
+
+Le système peut ordonner les locks :
+la fonction lock(<un ensemble de locks arbitraire>) peut garantir un ordre total sur tous les locks.
+
+*** try_lock
+
+Permet de ne pas s'endormir si le verrou est déjà acquis (on peut aller faire autre chose).
+timed_lock permet de s'endormir pour un petit moment, puis va faire autre chose.
+
+try_lock() est atomique : soit j'ai les deux, soit j'en ai aucun.
+
+*** defer_lock
+
+On créé des locks qui ne sont pas acquis de suite : permet d'avoir le meilleur des deux mondes :
+- Utiliser la fonction lock() et donc demander au système de me protéger des interblocages
+- Utiliser unique_lock et de ne pas avoir à unlock moi-même.
+
+
+
+* Cours 5 : 21/10/2019
+
+** Processus what ?, Multiples processus
+
+Cours "legacy", similaire aux cours de Pierre Sens et Luciana Arantes.
+
+*** POSIX
+
+Portable Operating System Interface for Computing Environments
+
+Une interface unifiée et spécifiée. Une API qui garantit la portabilité pourvu qu'on utilise uniquement des fonctions POSIX.
+
+Standard très concret : pour chaque service, on a un ensemble de spécifications nécessaires.
+
+*** Processus selon POSIX
+
+Un processus est, du point de vue de POSIX, c'est une entité active du système.
+
+Le processus *est* un espace d'adressage virtuel.
+
+On a un propriétaire réel, effectif, et un répertoire courant (cwd).
+
+Vu qu'on a des espaces d'adressages distincts, comment on fait communiquer des processus ?
+
+*** L'appel système fork
+
+[rappels de choses connues]
+
+#+BEGIN_QUOTE
+En informatique, une fonction est dite à effet de bord (traduction mot à mot de l'anglais side effect, dont le sens est plus proche d'effet secondaire) si elle modifie un état en dehors de son environnement local, c'est-à-dire a une interaction observable avec le monde extérieur autre que retourner une valeur.
+#+END_QUOTE
+
+Ici, l'effet de bord est donné par l'intérieur de la fonction fork. En gros, la fonction fork retourne une valeur dans pid_fils, mais son *vrai* effet, c'est la duplication du processus qui se déroule en dehors de son environnement local.
+
+*** Héritage
+
+On hérite de :
+- UID et GID
+- Identifiant de session
+- cwd
+- bits de umask
+- masque de signaux, handlers
+- envvars
+- Segments de mémoire partagée
+- Les descripteurs de fichiers ouverts (l'offset aussi)
+- Nice
+
+On n'hérite pas de :
+- PID
+- Temps d'exécution
+- Signaux pendants
+- Verrous de fichiers maintenus par le père
+- Alarmes
+
+*** Aparté sur les erreurs d'appel système
+
+perror et errno : utilité et implantation.
+
+*** Terminaison et wait
+
+Le fils a une valeur de retour, que le père peut interroger.
+
+Macros d'interprétation des valeurs de retours (spécifiques à chaque OS)
+
+*** exec
+
+** Communication interprocessus
+
+Un processus est un espace d'adressage, ils ne voient pas la même mémoire.
+
+Outils de communication :
+
+- On peut manipuler des fichiers : tout le monde peut y accéder. Adosser la communication au système de fichier est une bonne idée : lent, mais bien stable.
+- On peut se servir des signaux, ce qui est la manière la plus simple, mais qui transmet le moins d'information. Le système en envoie de base.
+- Les tubes ou tubes nommés (qui ont une belle sémantique producteur-consommateur) : peut être adossé au système de fichier, ou à une table en mémoire centrale.
+- Les segments de mémoire partagée anonymes ou nommés : peut être adossé au système de fichier, ou à une table en zone noyau en mémoire centrale.
+- Les files de messages nommés ou anonymes : peut être adossé au système de fichier ou à une table en zone noyau en mémoire centrale
+- Les sockets nommés ou anonymes : peut être adossé au système de fichier, ou à une table en zone noyau en mémoire centrale
+
+En fait, quand une de ces choses-là est nommée, elle peut être adossée au système de fichier, un espace accessible à tous les processus (moyennant permissions). A ce moment-là, *elles deviennent des fichiers* (avec leur inode et tout et tout, accessible par descripteur de fichier et tout et tout), juste des fichiers un peu spéciaux.
+
+#+BEGIN_QUOTE
+Everything is a file.
+
+Every UNIX programmer/conceptor for times immemorial
+#+END_QUOTE
+
+Outils de synchronisation :
+
+- Sémaphore (mutex avec capacité et une condition dessus, plus une notification)
+
+L'API signal du C++ fonctionne de la même manière que le positionnement du handler de signal POSIX ou même UNIX old-school : on ne change le handler que de la prochaine réception du signal en question (cf. cours Pierre Sens).
 
 
 * Annexes

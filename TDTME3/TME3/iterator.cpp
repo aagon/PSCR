@@ -246,8 +246,6 @@ int main ()
 
 	cout << "On trouve " << *(table.get("pierre")) << " occurences du mot pierre" << endl;
 
-	cout << "On a bien begin différend de end" << (table.begin() != table.end()) << endl;
-
 	cout << "Il y a " << table.count(table.begin(), table.end()) << " mots" << endl;
 
 	return 0;

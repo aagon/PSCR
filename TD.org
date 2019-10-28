@@ -856,9 +856,284 @@ Dans la version lambda, on fait intervenir la liste de capture vue en cours :
 [=] : prends toutes les variables que j'utilise, par copie
 
 
+* TD 4 : 18/10/2019
+
+*** Question 1
+
+Ecrire la fonction createAndWait
+
+Pour créer un thread, on utilise le constructeur de la classe thread:
+
+#+BEGIN_SRC c++
+  thread thread(fonction, arg1, arg2, ...);
+#+END_SRC
+
+thread a une méthode membre join(), qui permet de join.
+
+Dans le choix entre push_back et emplace_back, il faut faire attention :
+
+
+
+#+BEGIN_SRC c++
+  void createAndWait(int N) {
+	  std::vector<std::thread> threads;
+	  threads.reserve(N);
+
+	  for (int i = 0; i < N; ++i) {
+		  // OU ALORS, pas les deux
+		  threads.emplace_back(work, i);
+		  threads.push_back(thread(work, i));
+		  // FIN alternative
+
+		  cout << "Created" << endl;
+	  }
+
+
+	  // La suppression des threads
+	  for (int i = 0; i < N; ++i) {
+		  threads[i].join();
+	  }
+	  // Dans sa version foreach
+	  for (auto &t : threads) {
+		  t.join();
+		  cout << "Joined " << ++i;
+		  // Oh ben merde, on n'a pas créé i !
+		  // "On aurait peut-être dû rester sur une boucle for simple"
+		  // Yann Thierry-Mieg, 2019
+		  // Si on avait besoin de preuve supplémentaire que toutes les
+		  // "fonctionnalités" C++ sont principalement faites pour vous
+		  // faire vous casser la gueule
+	  }
+
+
+  }
+#+END_SRC
+
+*** Question 2
+
+Quels sont les entrelacements possibles ?
+
+[On peut refaire le dessin du flot de contrôle du tableau]
+
+Il y a plein d'exécutions possibles (Combien ?? [à refaire en exercice maison])
+
+*** Question 3
+
+finished < joined (flèche rouge du join)
+created < joined (ordre du père)
+started < finished (ordre du fils)
+
+c,s,f,j
+s,f,c,j
+s,c,f,j
+
+*** Question 4
+
+Jackpot : on se met dans le cas où plusieurs threads manipulent la même variable.
+
+#+BEGIN_SRC c++
+  int main()
+  {
+	  Compte c;
+
+	  std::vector<std::thread> threads;
+	  threads.reserve(N);
+
+	  for (int i = 0; i < N; ++i) {
+		  threads.emplace_back(jackpot, std::ref(c));
+		  // On doit, dans le cas des threads, forcer le compilateur
+		  // à accepter la référence.
+		  cout << "created" ;
+	  }
+
+	  for (int i = 0; i < N; ++i) {
+		  threads[i].join();
+	  }
+
+	  return 0;
+  }
+
+#+END_SRC
+
+*** Aparté : de l'intérêt des références par rapport aux pointeurs
+
+Dans l'idée en tous cas :
+
+En fait, une référence reste légale en général aussi longtemps que la chose référencée (pas comme les pointeurs).
+
+(sauf dans les programmes multithreadés)
+
+*** Question 5
+
+On ne sait pas.
+
+On a plusieurs exécutions possibles [refaire le flot d'exécution]
+
+Data race : course pour être le dernier à écrire la variable.
+
+*** Question 6
+
+Le thread sera exécuté de manière pseudo-atomique : pour 100 pièces d'or, un thread n'aura pas le temps de se faire commuter.
+
+*** Question 7
+
+atomic garantit un certain nombre de choses :
+Certaines instructions sont atomiques :
+- read
+- write
+- arithmétique simple : ++, +=, -=
+
+Attention : var = var + 1 n'est pas atomique (créé un temporaire)
+Mais var += 1
+++var est atomique
+
+La solution consiste à mettre atomic sur la variable solde.
+
+*** Question 8
+
+Oui le compte peut tomber en négatif.
+
+Il suffit que je me fasse commuter après le test et avant la mise à jour.
+
+Atomic ne garantit que :
+- La vérification est atomique
+- La mise à jour à atomique
+
+Mais pas d'atomicité entre la vérification et la mise à jour.
+
+Par contre, le solde du compte est cohérent avec les sommes débitées : atomic. (la banque a juste fait crédit sans le vouloir)
+
+*** Question 9
+
+On veut implémenter une section critique autour de (test, mise à jour).
+
+On va utiliser un mutex dans la méthode débiter de la classe Compte :
+
+#+BEGIN_SRC c++
+  class Compte {
+	  std::mutex m;
+
+  public:
+
+	  // Les autres méthodes ici, tya compris
+
+	  bool debiter(unsigned int val) {
+		  m.lock();
+
+		  if (solde >= val) {
+			  solde -= val;
+			  m.unlock();
+			  return true;
+		  }
+
+		  m.unlock();
+		  return false;
+	  }
+
+  };
+
+
+#+END_SRC
+
+*** Question 9
+
+Question typiquement c++ : on peut faire comme ça, mais "c'est trop dangereux". Implémentons 15 manières différentes de faire la même chose, noyons le langage sous 1 tonne de sucre syntaxique, what could possibly go wrong ?
+
+Utilisons plutôt un unique_lock : pas parce que c'est utile, juste parce qu'on peut.
+
+#+BEGIN_SRC c++
+  class Compte {
+	  std::mutex m;
+
+  public:
+
+	  // Les autres méthodes ici, tya compris
+
+	  bool debiter(unsigned int val) {
+		  unique_lock<mutex> l(m);
+
+		  if (solde >= val) {
+			  solde -= val;
+			  return true;
+		  }
+
+		  return false;
+	  }
+
+  };
+
+#+END_SRC
+
+A dire vrai, la vraie bonne manière, c'est de limiter la quantité des échappements de la fonction :
+
+#+BEGIN_SRC c++
+  class Compte {
+	  std::mutex m;
+
+  public:
+
+	  // Les autres méthodes ici, tya compris
+
+	  bool debiter(unsigned int val) {
+		  m.lock();
+
+		  bool doit = (solde>=val);
+
+		  if (doit) solde -= val;
+
+		  m.unlock();
+		  return doit;
+	  }
+
+  };
+#+END_SRC
+
+Dans cette version-là (quand on fait attention à ne pas se compliquer les choses), unique_lock est effectivement inutile.
+
+*** Question 11
+
+En gros, le mutex protège une variable en contraignant ceux qui veulent la modifier, quand le atomic le protège directement.
+
+Si on sait exactement qui va essayer de modifier cette variable (et uniquement à cette condition), alors on n'a plus besoin d'utiliser atomic si on prend bien garde à contraindre tous les candidats à la modification à acquérir le verrou.
+
+Dans le OO, on a la garantie que les variables privées d'une classe ne peuvent être manipulées que par les méthodes de la classe.
+
+*** Question 12
+
+Pas de constructeur par copie : les mutex ne sont pas copiables, et la version par défaut du contructeur par copie copie tous les éléments.
+
+On doit écrire notre propre constructeur par copie.
+
+#+BEGIN_SRC c++
+  class Compte {
+	  Compte(const Compte &c) {
+		  c.m.lock(); // Ou unique_lock<mutex> l(c.m);
+		  this->solde = c.solde;
+		  this->autreattribut = c.autreattribut;
+	  }
+  };
+#+END_SRC
+
+*** A propos du TME
+
+On va manipuler une banque.
+
+On va implémenter des transferts.
+
+On a un thread comptable qui calcule le bilan, soit la somme des soldes.
+
+Interblocage.
+
+
 * Annexes
 
 Les supports de TD :
 
 [[./TDTME1/tdtme1.pdf][TD 1]]
+[[./TDTME2/tdtme2.pdf][TD 2]]
+[[./TDTME3/tdtme3.pdf][TD 3]]
+[[./TDTME4/tdtme4.pdf][TD 4]]
+
+
+
 

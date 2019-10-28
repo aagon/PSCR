@@ -965,3 +965,277 @@ De cette manière, le coût des réallocations est en log_2(n).
 #+END_SRC
 
 
+
+* TME 4 : 18/10/2019
+
+*** Question 1
+
+On rappelle toutes les classes sous-jacentes :
+
+Le fichier d'en-tête de la classe Compte :
+
+#+BEGIN_SRC c++ :tangle ./TDTME4/TME4/Compte.h
+  #pragma once
+  #include <thread>
+  #include <mutex>
+
+  namespace pr {
+
+	  class Compte {
+		  mutable std::mutex m;
+		  int solde;
+	  public :
+		  Compte(int solde=0):solde(solde) {}
+		  Compte(const Compte & other);
+		  void crediter (unsigned int val) ;
+		  bool debiter (unsigned int val) ;
+		  int getSolde() const;
+		  mutex &getMutex();
+	  };
+
+  }
+#+END_SRC
+
+L'implémentation des méthodes :
+
+#+BEGIN_SRC c++ :tangle ./TDTME4/TME4/Compte.cpp
+  #include "Compte.h"
+
+  using namespace std;
+
+  namespace pr {
+	  void Compte::crediter (unsigned int val) {
+		  unique_lock<mutex> g(m);
+		  solde+=val ;
+	  }
+	  bool Compte::debiter (unsigned int val) {
+		  unique_lock<mutex> g(m);
+		  bool doit = solde >= val;
+		  if (doit) {
+			  solde-=val ;
+		  }
+		  return doit;
+	  }
+	  int Compte::getSolde() const  {
+		  unique_lock<mutex> g(m);
+		  return solde;
+	  }
+  // NB : vector exige Copyable, mais mutex ne l'est pas...
+	  Compte::Compte(const Compte & other) {
+		  other.m.lock();
+		  solde = other.solde;
+		  other.m.unlock();
+	  }
+
+	  Compte::getmutex() {
+		
+	  }
+
+  }
+
+#+END_SRC
+
+On rajoute la classe Banque :
+
+#+BEGIN_SRC c++ :tangle ./TDTME4/TME4/Banque.h
+  #pragma once
+
+  #include "Compte.h"
+  #include <vector>
+
+  namespace pr {
+
+	  class Banque {
+		  typedef std::vector<Compte> comptes_t;
+		  comptes_t comptes;
+	  public :
+		  Banque (size_t ncomptes, size_t solde) : comptes (ncomptes, Compte(solde)){
+		  }
+		  void transfert(size_t deb, size_t cred, unsigned int val) ;
+		  size_t size() const ;
+		  bool comptabiliser (int attendu) const ;
+		  int get_solde(size_t compte) ;
+	  };
+
+  }
+
+#+END_SRC
+
+L'implémentation des méthodes :
+
+#+BEGIN_SRC c++ :tangle ./TDTME4/TME4/Banque.cpp
+  #include "Banque.h"
+
+  #include <iostream>
+
+  using namespace std;
+
+  namespace pr {
+
+	  void Banque::transfert(size_t deb, size_t cred, unsigned int val) {
+		  Compte & debiteur = comptes[deb];
+		  Compte & crediteur = comptes[cred];
+		  if (debiteur.debiter(val)) {
+			  crediteur.crediter(val);
+		  }
+	  }
+	  size_t Banque::size() const {
+		  return comptes.size();
+	  }
+	  bool Banque::comptabiliser(int attendu) const {
+		  int bilan = 0;
+		  int id = 0;
+		  for (const auto & compte : comptes) {
+			  if (compte.getSolde() < 0) {
+				  cout << "Compte " << id << " en négatif : " << compte.getSolde() << endl;
+			  }
+			  bilan += compte.getSolde();
+			  id++;
+		  }
+		  if (bilan != attendu) {
+			  cout << "Bilan comptable faux : attendu " << attendu << " obtenu : " << bilan << endl;
+		  }
+		  return bilan == attendu;
+	  }
+
+	  int Banque::get_solde(size_t compte) {
+		  return comptes[compte].getSolde();
+	  }
+  }
+#+END_SRC
+
+
+#+BEGIN_SRC c++ :tangle ./TDTME4/TME4/main.cpp
+  #include <thread>
+  #include <iostream>
+
+  #include "Banque.h"
+
+  using namespace std;
+
+  const int NB_THREAD = 20;
+  const int K = 100;
+  const int SOLDEINITIAL = 1000;
+
+  // En fait, il fallait bien écrire la fonction ici :
+
+  void transferts_aleatoires(pr::Banque *banque) {
+
+	  int compteur = 1000;
+
+	  for (; compteur > 0; --compteur) {
+		  auto i = ::rand() % banque->size();
+		  auto j = ::rand() % banque->size();
+
+		  // On part du principe qu'on peut se faire des transferts à soi-même
+		  auto m = ::rand() % 100;
+
+		  // cout << m << endl;
+
+		  banque->transfert(i,j,m);
+
+		  // On s'endort pendant une durée aléatoire entre 0 et 200ms
+		  auto r = ::rand() % 20;
+
+		  std::this_thread::sleep_for(std::chrono::milliseconds(r));
+	  }
+  }
+
+  int bilan_naif(pr::Banque *banque)
+  {
+	  int bilan = 0;
+
+	  for (int i = 0; i < K ; ++i) {
+		   bilan += banque->get_solde(i);
+	   }
+
+	   return bilan;
+   }
+
+  int main()
+  {
+	  // On fixe la graine
+	  ::srand(::time(nullptr));
+
+	  // On créé une instance de banque
+	  pr::Banque LBP(K, SOLDEINITIAL);
+	  // On vérifie que le comptable est content
+	  // cout << LBP.comptabiliser(K * SOLDEINITIAL) << endl;
+	  cout << bilan_naif(&LBP) << endl;
+	  // On vérifie qu'un compte random est bien à la bonne valeur
+	  cout << LBP.get_solde(12) << endl;
+
+
+	  vector<thread> threads;
+
+	  // TODO : creer des threads qui font ce qui est demandé
+	  threads.reserve(NB_THREAD);
+	  for (int i = 0; i < NB_THREAD; ++i) {
+		  threads.push_back(thread(transferts_aleatoires, &LBP));
+	  }
+	  // Threads créés
+
+	  for (auto & t : threads) {
+		  t.join();
+	  }
+
+	  // Est-ce que le comptable est content ?
+	  // cout << LBP.comptabiliser(K * SOLDEINITIAL) << endl;
+	  cout << bilan_naif(&LBP) << endl;
+	  // Est-ce que notre fonction a vraiment fait qqch ?
+	  cout << LBP.get_solde(12) << endl;
+	  cout << LBP.get_solde(37) << endl;
+	  cout << LBP.get_solde(15) << endl;
+	  cout << LBP.get_solde(87) << endl;
+
+	  // TODO : tester solde = NB_THREAD * JP
+	  return 0;
+  }
+
+
+
+#+END_SRC
+
+Pour compiler tout ça, on écrit un makefile :
+
+#+BEGIN_SRC makefile :tangle ./TDTME4/TME4/Makefile
+  tme4: Banque.cpp Compte.cpp main.cpp
+	  g++ -std=c++1y -O0 -g3 -Wall -c -lpthread -o ./Compte.o ./Compte.cpp
+	  g++ -std=c++1y -O0 -g3 -Wall -c -lpthread -o ./Banque.o ./Banque.cpp
+	  g++ -std=c++1y -O0 -g3 -Wall -c -lpthread -o ./tme4.o ./main.cpp
+	  g++ -lpthread -o ./tme4 ./Compte.o ./Banque.o ./tme4.o
+#+END_SRC
+
+
+*** Question 2
+
+Déjà, on arrive à compiler avec les codes donnés plus haut.
+
+On n'a pas de problème pour le moment, avec K = 100, 10 threads, et 1000 itérations dans le thread.
+
+On passe bien l'instance de la banque par pointeur, et on vérifie bien que les comptes sont modifiés.
+
+Comment forcer une erreur ?
+
+*** Question 3
+
+*** Lignes de réponse :
+
+On fait un truc style d.lock, c.lock, section critique
+
+recursive_mutex doit être utilisé (on se rebloque entre le premier verrou qu'on vient de définir, et le deuxième dans le corps des méthodes)
+
+Ensuite :
+
+Deadlock introduit par interblocage.
+
+Il faut bien ordonner les verrous : on peut demander au système de faire ça, ou on peut le faire à la main.
+
+Sinon Big Fat Lock : on met un mutex sur la banque (mais l'intérêt est nul)
+
+Pour le comptable :
+
+v0 la fonction comptabiliser, lock tous les comptes.
+
+Lock progressif : lock dans l'ordre d'indice.
+
