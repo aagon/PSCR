@@ -1,0 +1,18 @@
+#+TITLE : Prise de notes Révisions 4I400 PSCR
+#+PROPERTY: header-args :mkdirp yes
+#+STARTUP: inlineimages
+
+* Introduction
+
+Le but du présent fichier est de centraliser les révisions pour le partiel, puis pour l'examen final.
+
+Les supports de révision étant assez succincts (le passage de cette UE sous C++ date de l'année 2018-2019), on va être contraint, pour réviser, de se servir uniquement des TD et TME de cette année, du partiel de l'année dernière, puis des TD/TME de l'année dernière, *dans cet ordre-là*. Les TD/TME 1 à 5 n'ayant toujours pas été fini au moment de l'écriture de ces lignes, on va s'entraîner à les refaire sans les corrigés dans une arborescence de fichiers secondaires.
+
+L'arborescence principale des TD/TME restera donc statique en attendant la fin des révisions.
+
+* Partiel
+
+** TDTME1
+
+
+

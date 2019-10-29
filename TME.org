@@ -410,14 +410,14 @@ Found a total of 1784 occurrences of the word pierre.
 
 *** Question 4
 
-Pour chacun des n mots du texte, on a besoin de faire 
+Pour chacun des n mots du texte, on a besoin de faire [la suite manque]
 
 
 ** 1.2 Table de hachage 
 
 *** Question 5
 
-(Version Thiery-Mieg, au tableau)
+(Version Thierry-Mieg, au tableau)
 
 #+BEGIN_SRC c++
   #include <iostream>
@@ -495,7 +495,7 @@ Pour chacun des n mots du texte, on a besoin de faire
 	  }
 #+END_SRC
 
-(Version Aymeric Agon-Rambosson)
+(Version Agon-Rambosson)
 
 #+BEGIN_SRC c++ :tangle ./TDTME2/TME2/hash.cpp
   #include <iostream>
@@ -1238,4 +1238,6 @@ Pour le comptable :
 v0 la fonction comptabiliser, lock tous les comptes.
 
 Lock progressif : lock dans l'ordre d'indice.
+
+[à reprendre quand on a le temps]
 

@@ -27,7 +27,8 @@ Petit bout de code à déboguer éventuellement (en deux parties : une compilati
 
 valgrind
 
-14-15 302 : pas le home (les programmes précompilés doivent devenir)
+14-15 302 : pas le home (les programmes précompilés doivent être amenés avec la clé USB).
+
 
 * Cours 1 : 16/09/2019
 
@@ -510,36 +511,39 @@ Yann Thierry-Mieg
 
 On n'arrive pas à dépasser 5GHz.
 
-L'augmentation des transistors passe par l'augmentation du nombre de coeurs.
+L'augmentation du nombre de transistors (loi de Moore) passe par l'augmentation du nombre de coeurs.
 
-Il faut gérer la concurrence.
+Il faut donc, dans les programmes récents, savoir gérer la concurrence.
 
-*** Problèmes
+*** Problèmes amenés par l'exécution concurrente
 
-L'exécution n'est plus séquentielle.
-Enormément d'actions ne sont pas liées logiquement et chronologiquement les unes entre les autres.
+On était auparavant sûrs de ce que deux instructions, quand une était placée avant l'autre, qu'elle allait être exécutée avant l'autre. L'exécution était *séquentielle* par hypothèse.
 
-Plein d'exécutions possibles du programme.
+Maintenant, sur des séquences concurrentes de code, cette hypothèses sautent, avec tous les problèmes que ça amène : plein d'actions, dont on pouvait être sûr de leur liaison logique et chronologique, flottent les unes par rapport aux autres.
 
-K étapes, N threads \to K^N entrelacements.
+De cette manière, là où un programme avait une seule exécution possible, on se retrouve avec un espace des exécutions possibles beaucoup plus grand.
 
-On doit correctement introduire un certain nombre de synchronisations, pour exprimer explicitement les précédences entre les fils.
+Si on prend par exemple un programme avec K étapes qui peuvent être rendues concurrentes, et N threads, le nombre total d'entrelacements possibles des étapes est donné par K^N.
 
-On réduit le champ des exécutions légitimes du programme, de manière à s'assurer de ce qu'on veut.
+Pour s'assurer de ce que le programme fait bien exactement ce qu'on veut, autrement dit, si on veut s'assurer de sa *sémantique*, on doit introduire un certain nombre de synchronisations, qui serviront à exprimer explicitement des précédences entre différents points des threads.
+
+Ces précédences explicites permettre de réduire le champ des exécutions possibles du programme, de manière à ce que ce champ ne dépasse pas la sémantique qu'on lui veut donner (si possible, on essaiera aussi de ne pas trop restreindre le champ des exécutions possibles au délà de ce qui est strictement nécessaire pour s'assurer de ce que la sémantique est préservée).
 
 *** Loi d'Amdahl
 
-Chaque algorithmes dispose d'une partie séquentielle (pas accélérable) et une partie parallélisable (accélérable de manière proportionnelle en )
+Chaque algorithmes dispose d'une partie séquentielle (pas accélérable) et une partie parallélisable (accélérable de manière proportionnelle en le nombre de processeurs).
 
-On plafonne à partir du moment où n le nombres de processeurs dépasse les opérations après découpage.
+On plafonne à partir du moment où n le nombres de processeurs dépasse le nombre d'opérations après découpage.
 
 *** Problèmes, suite
 
 **** Ressources critiques, non-atomicité, conditions de course
 
 Ressources aux accès concurrents : ressources critiques.
+
 Pas d'atomicité des instructions du C++ (et même pas en C non plus). 1 ligne de C++ produit N instructions assembleur impossibles à compter.
 C est un peu meilleur, on a presque une correspondance 1 pour 1.
+
 Data Race Condition : Celui qui a écrit en dernier a raison sur la valeur de la variable.
 
 **** Interblocages
@@ -554,7 +558,7 @@ On ne fait aucune hypothèse sur l'ordonnanceur, il fait ce qu'il veut, on ne le
 
 On doit penser à l'ordonnanceur comme mon ennemi (c'est le Malin Génie), pour s'assurer de ce que l'exécution se passe comme on veut.
 
-Difficulté de reproduire les problèmes.
+Difficulté de reproduire les problèmes : l'occurence d'un problème est souvent due à des petits enchaînements subtils, qu'on ne peut pas reproduire facilement, que les entrées-sorties de débug font typiquement disparaître.
 
 La distribution de probabilité est en effet défavorable aux fautes de concurrence.
 La commutation doit se passer au pire moment pour que la faute se produise : très peu probable sur un nombre fini d'exécutions.
@@ -738,7 +742,7 @@ Portable Operating System Interface for Computing Environments
 
 Une interface unifiée et spécifiée. Une API qui garantit la portabilité pourvu qu'on utilise uniquement des fonctions POSIX.
 
-Standard très concret : pour chaque service, on a un ensemble de spécifications nécessaires.
+Standard très concret : pour chaque service, on a un ensemble de spécifications que l'implantation doit suivre.
 
 *** Processus selon POSIX
 
@@ -782,30 +786,36 @@ On n'hérite pas de :
 
 *** Aparté sur les erreurs d'appel système
 
-perror et errno : utilité et implantation.
+Les appels systèmes sont exécutés en mode noyau (évidemment), ils sont exécutés sur une autre pile que celle des fonctions exécutées en mode utilisateur. Bien évidemment, l'utilisateur n'a pas accès, à son retour en mode U, aux piles noyau. Pour passer des arguments du mode U au mode S, et des retours dans le sens inverse, on doit manipuler directement la pile de l'utilisateur, ou placer les retours dans une zone accessible globalement.
+
+perror est une fonction qui permet d'accéder au dernier numéro d'erreur errno rendu par un appel système.
 
 *** Terminaison et wait
 
 Le fils a une valeur de retour, que le père peut interroger.
 
-Macros d'interprétation des valeurs de retours (spécifiques à chaque OS)
+La primitive wait sert à la fois à bloquer le processus appelant, en attendant le exit d'un des processus fils, et sert aussi à récupérer la valeur de retour du fils en question.
+
+Il existe des macros d'interprétation des valeurs de retours (qui sont bien entendu spécifiques à chaque OS).
 
 *** exec
 
+exec est la primitive de recouvrement, elle permet de changer le segment de texte d'un processus par un texte valable du système de fichier (un binaire compilé pour la bonne architecture).
+
 ** Communication interprocessus
 
-Un processus est un espace d'adressage, ils ne voient pas la même mémoire.
+Un processus est un espace d'adressage, deux processus distincts ne voient donc pas la même mémoire.
 
 Outils de communication :
 
 - On peut manipuler des fichiers : tout le monde peut y accéder. Adosser la communication au système de fichier est une bonne idée : lent, mais bien stable.
-- On peut se servir des signaux, ce qui est la manière la plus simple, mais qui transmet le moins d'information. Le système en envoie de base.
-- Les tubes ou tubes nommés (qui ont une belle sémantique producteur-consommateur) : peut être adossé au système de fichier, ou à une table en mémoire centrale.
+- On peut se servir des signaux, ce qui est la manière la plus simple, mais qui transmet le moins d'information. Le système en envoie de base à tous les processus régulièrement.
+- Les tubes ou tubes nommés (qui ont une belle sémantique producteur-consommateur) : peut être adossé au système de fichier, ou à une table en zone noyau de la mémoire centrale.
 - Les segments de mémoire partagée anonymes ou nommés : peut être adossé au système de fichier, ou à une table en zone noyau en mémoire centrale.
 - Les files de messages nommés ou anonymes : peut être adossé au système de fichier ou à une table en zone noyau en mémoire centrale
 - Les sockets nommés ou anonymes : peut être adossé au système de fichier, ou à une table en zone noyau en mémoire centrale
 
-En fait, quand une de ces choses-là est nommée, elle peut être adossée au système de fichier, un espace accessible à tous les processus (moyennant permissions). A ce moment-là, *elles deviennent des fichiers* (avec leur inode et tout et tout, accessible par descripteur de fichier et tout et tout), juste des fichiers un peu spéciaux.
+En fait, quand une de ces choses-là est nommée, elle peut être adossée au système de fichier (c'est une des manières possibles, l'autre étant une table en mémoire centrale), un espace accessible à tous les processus (moyennant permissions). A ce moment-là, *elles deviennent des fichiers* (avec leur inode et tout et tout, accessible par descripteur de fichier et tout et tout), juste des fichiers un peu spéciaux.
 
 #+BEGIN_QUOTE
 Everything is a file.
@@ -828,5 +838,6 @@ Les supports de cours :
 [[./CM2/cours2.pdf][Cours 2]]
 [[./CM3/cours3.pdf][Cours 3]]
 [[./CM4/cours4.pdf][Cours 4]]
+[[./CM5/cours5.pdf][Cours 5]]
 
 

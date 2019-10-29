@@ -118,7 +118,7 @@ La vraie manière, à la Linus :
 
 Remarque :
 
-C++ est scandaleux : str est imprimé comme un string, et pas comme une adresse.
+str est imprimé comme un string, et pas comme une adresse.
 Pour faire ce qu'on a fait avec printf, on doit écrire :
 
 #+BEGIN_SRC c++
@@ -126,7 +126,7 @@ Pour faire ce qu'on a fait avec printf, on doit écrire :
   cout << (void *)copy << " " << copy << " " << length(copy) << endl;
 #+END_SRC
 
-Alors qu'on penserait, à raison :
+Alors qu'on penserait que les instructions suivantes fonctionneraient :
 
 #+BEGIN_SRC c++
   cout << str << " " << *str << " " << length(str) << endl;
@@ -135,12 +135,11 @@ Alors qu'on penserait, à raison :
 
 En fait cout voit que str pointe sur un caractère et voit le caractère '\0'. Il interprète ça comme une string.
 
-On n'arrive pas à forcer une erreur de segmentation, malgré un débordement de tampon forcé ? (Ni en C avec malloc, ni en C++ avec new)
-
+On n'arrive pas à forcer une erreur de segmentation, malgré un débordement de tampon forcé ? (Ni en C avec malloc, ni en C++ avec new).
 
 *** Question 8
 
-Pour compiler toute cette saloperie :
+Pour compiler tout ça :
 
 #+BEGIN_SRC shell
   g++ -std=c++1y -O0 -g3 -Wall -c -o "/chemin/vers/strutil.o" /chemin/vers/strutil.cpp
@@ -303,7 +302,7 @@ Dans tous les cas où on a des pointeurs dans les classes, il faut absolument d�
 Implémentons nous-même la classe Vector.
 On a de la généricité (on peut définir des Vector de int ou float, ou autre chose)
 
-Quand on a une classe générique, on écrit le code dans le .h (en effet, on a besoin )
+Quand on a une classe générique, on écrit le code de l'implantation directement dans le fichier d'en-tête (en effet, on a besoin du code de l'implantation à chaque fois que la classe générique est instanciée sur un type simple, ce qui se fait aussi dans un fichier d'en-tête).
 
 #+BEGIN_SRC c++
   // Vector.h ou un truc du genre
@@ -367,11 +366,11 @@ Quand on a une classe générique, on écrit le code dans le .h (en effet, on a 
 
 En fait la référence, c'est un pointeur toujours déréférencé.
 
-On doit dédoubler l'opérateur [], parce que probablement quelque part, quelqu'un a écrit un opérateur qui prend une référence const. Si j'essaie de me servir de cet opérateur, je ne peux pas compiler. Le const, c'est la chienlit.
+On doit dédoubler l'opérateur [], parce que probablement quelque part, quelqu'un a écrit un opérateur qui prend une référence const. Si j'essaie de me servir de cet opérateur, je ne peux pas compiler.
 
 Le const après la déclaration d'une méthode porte sur le premier paramètre implicite de la méthode, le this.
 
-Pourquoi alloc_sz * 2 ? La réponse en cours d'ALGAV.
+Pourquoi alloc_sz * 2 ? La réponse en cours d'ALGAV (en gros, croissance exponentielle de la taille du conteneur garantit un appel logarithmique en la taille à la fonction de grossissement, qui est coûteuse).
 
 ** 1.3 Liste chaînée
 
@@ -827,20 +826,25 @@ Ensuite on instancie la classe en une instance m, et on appelle :
 
   auto it = find_if(vec.begin(), vec.end(), m("un string"))
 #+END_SRC
-(aucun intérêt par rapport à la première manière, et non supporté sur des standards plus vieux, donc nul)
 
 
-La troisème manière, la plus moderne (supportée depuis quand ???) :
+La troisème manière, la plus moderne (supportée depuis C++11) :
 
 #+BEGIN_SRC c++
   auto it = find_if(vec.begin(), vec.end(), [](const string &s) {return s.length() == 3});
 #+END_SRC
 
+le type predicate est un concept dont les seules contraintes sont de prendre des arguments et de rendre un booléen.
+
+#+BEGIN_QUOTE
+The concept predicate<F, Args...> specifies that F is a predicate that accepts arguments whose types and value categories are encoded by Args..., i.e., it can be invoked with these arguments to produce a boolean result. 
+#+END_QUOTE
+
 *** Question 8
 
 On doit introduire une variable n pour le test.
 
-Pour la solution à la C, on doit créer une globale : NON
+Pour la solution à la C, on doit créer une globale, ce qu'on ne se permet pas.
 
 Dans la version foncteur, on peut ajouter n comme attribut de la structure matcher (peut-être le seul intérêt du foncteur à ce jour, probablement).
 
@@ -868,10 +872,11 @@ Pour créer un thread, on utilise le constructeur de la classe thread:
   thread thread(fonction, arg1, arg2, ...);
 #+END_SRC
 
-thread a une méthode membre join(), qui permet de join.
+thread a une méthode membre join(), qui permet de join (!).
 
 Dans le choix entre push_back et emplace_back, il faut faire attention :
-
+push_back créé un temporaire, puis se sert du constructeur par copie du conteneur pour mettre le temporaire dans le conteneur.
+emplace_back ne créé pas de temporaire, mais se sert du constructeur par défaut du conteneur pour mettre l'objet à la bonne place.
 
 
 #+BEGIN_SRC c++
@@ -893,16 +898,10 @@ Dans le choix entre push_back et emplace_back, il faut faire attention :
 	  for (int i = 0; i < N; ++i) {
 		  threads[i].join();
 	  }
-	  // Dans sa version foreach
+	  // Dans sa version foreach, qui ne marche pas parce qu'on a pas de i
 	  for (auto &t : threads) {
 		  t.join();
 		  cout << "Joined " << ++i;
-		  // Oh ben merde, on n'a pas créé i !
-		  // "On aurait peut-être dû rester sur une boucle for simple"
-		  // Yann Thierry-Mieg, 2019
-		  // Si on avait besoin de preuve supplémentaire que toutes les
-		  // "fonctionnalités" C++ sont principalement faites pour vous
-		  // faire vous casser la gueule
 	  }
 
 
@@ -915,7 +914,7 @@ Quels sont les entrelacements possibles ?
 
 [On peut refaire le dessin du flot de contrôle du tableau]
 
-Il y a plein d'exécutions possibles (Combien ?? [à refaire en exercice maison])
+Il y a plein d'exécutions possibles (Combien ?? [on recomptera si on a le temps])
 
 *** Question 3
 
@@ -942,7 +941,8 @@ Jackpot : on se met dans le cas où plusieurs threads manipulent la même variab
 	  for (int i = 0; i < N; ++i) {
 		  threads.emplace_back(jackpot, std::ref(c));
 		  // On doit, dans le cas des threads, forcer le compilateur
-		  // à accepter la référence.
+		  // à accepter la référence. Ou sinon, faire de c un pointeur
+		  // vers Compte et se simplifier la vie.
 		  cout << "created" ;
 	  }
 
@@ -962,6 +962,8 @@ Dans l'idée en tous cas :
 En fait, une référence reste légale en général aussi longtemps que la chose référencée (pas comme les pointeurs).
 
 (sauf dans les programmes multithreadés)
+
+En pratique, on préfèrera se servir des pointeurs, pour ne pas avoir à se servir de std::ref() (qu'on ne se rappellera probablement pas).
 
 *** Question 5
 
@@ -1037,8 +1039,6 @@ On va utiliser un mutex dans la méthode débiter de la classe Compte :
 
 *** Question 9
 
-Question typiquement c++ : on peut faire comme ça, mais "c'est trop dangereux". Implémentons 15 manières différentes de faire la même chose, noyons le langage sous 1 tonne de sucre syntaxique, what could possibly go wrong ?
-
 Utilisons plutôt un unique_lock : pas parce que c'est utile, juste parce qu'on peut.
 
 #+BEGIN_SRC c++
@@ -1047,7 +1047,7 @@ Utilisons plutôt un unique_lock : pas parce que c'est utile, juste parce qu'on 
 
   public:
 
-	  // Les autres méthodes ici, tya compris
+	  // Les autres méthodes ici
 
 	  bool debiter(unsigned int val) {
 		  unique_lock<mutex> l(m);
@@ -1064,7 +1064,7 @@ Utilisons plutôt un unique_lock : pas parce que c'est utile, juste parce qu'on 
 
 #+END_SRC
 
-A dire vrai, la vraie bonne manière, c'est de limiter la quantité des échappements de la fonction :
+A dire vrai, la vraie bonne manière, c'est de limiter la quantité des échappements possibles de la fonction :
 
 #+BEGIN_SRC c++
   class Compte {
@@ -1072,7 +1072,7 @@ A dire vrai, la vraie bonne manière, c'est de limiter la quantité des échappe
 
   public:
 
-	  // Les autres méthodes ici, tya compris
+	  // Les autres méthodes ici
 
 	  bool debiter(unsigned int val) {
 		  m.lock();
