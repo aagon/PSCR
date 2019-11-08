@@ -12,6 +12,133 @@ L'arborescence principale des TD/TME restera donc statique en attendant la fin d
 
 * Partiel
 
+** Annale 2018
+
+*** Exercice 1 : compilation, débug
+
+Il y aurait en tout une dizaine de fautes.
+
+5 fautes qui empêchent la compilation
+
+3 fautes qui crashent le programme
+
+2 fautes de fuite de mémoire
+
+
+On modifie les fichiers directement.
+
+On a fini l'exercice 1, on a bien trouvé les 10 erreurs dans l'ordre.
+Les commentaires des erreurs sont directement dans les fichiers.
+
+Mais on y a passé beaucoup trop de temps pour un exercice qui est censé rapporté entre 5 et 8 points.
+
+Conseil :
+
+une fois la compilation passée, il faut suivre le main, et aller se perdre dans les méthodes uniquement en partant du main. On suit les fonctions appelées, on suit le cheminement du processeur, on ne s'amuse pas à lire les méthodes de la classe de manière linéaire.
+
+Le débug "à la main", avec un vieux printf("On est arrivé là!\n") marche correctement, mais cout pas forcément, surtout si vous n'incluez pas endl à la fin : vous pourriez être arrivés à un endroit, mais les entrées-sorties ne se font pas forcément dans l'ordre : vous pourriez avoir eu votre erreur de segmentation avant que le cout ait eu le temps d'arriver au terminal, alors qu'il est déjà parti (vérifier reproducibilité).
+
+Les erreurs sont relativement simples, donc gdb fait probablement perdre plus de temps qu'il n'en fait gagner (surtout en CLI).
+
+valgrind est en revanche particulièrement utile : il donne les lignes où sont les erreurs.
+
+*** Exercice 2 : le rendez-vous
+
+On écrit les classes, l'implémentation des méthodes directement dans les fichiers fournis.
+
+Attention : les conditions de déblocage sont séparées des mutex en C++. En C POSIX, on aurait simplement déclaré un sémaphore, qui est à la fois un mutex et une condition variable simple (on décrémente n à chaque prise de verrou, quand n passe en-dessous de 1, on bloque, et on attend qu'il remonte pour réveiller).
+
+Si on voulait implémenter une condition variable plus complexe, on aurait implémenté une fonction.
+
+Ici, les conditions variables sont un objet du langage, on doit donc savoir les manipuler directement.
+
+**** Question 1
+
+En gros, la condition variable dispose d'une méthode wait, qui permet de bloquer, et notify_all, qui permet de réveiller tout le monde.
+
+unique_lock sert à ne pas avoir à se rappeler de débloquer le verrou à la fin de la portée : c'est une classe template, qui peut prendre n'importe quelle classe "en elle" (std::unique_lock<ICI>) qui remplit le contrat BasicLockable.
+
+On passe le mutex au constructeur du unique_lock :
+
+#+BEGIN_SRC c++
+  #include <mutex>
+
+  std::mutex m;
+  std::unique_lock<std::mutex> l(m); // avec m le mutex
+#+END_SRC
+
+**** Question 2
+
+L'instanciation des threads passe par les objets standards thread et vector.
+
+On se contente de créer un vecteur de threads, et de le réserver à la bonne taille.
+
+Ensuite, pour instancier vraiment les threads, on se sert du constructeur par défaut du thread, qui prend en premier paramètre la fonction à exécuter, et ensuite les paramètres à passer à cette fonction.
+
+On pousse ou on remplace à sa bonne place dans le vecteur le nouveau thread, donc avec push_back ou emplace_back (en effet, on met les threads du premier au dernier). Si on veut éviter d'avoir à créer un temporaire et à donc faire appel à un constructeur par copie, on utilisera plutôt emplace_back.
+
+L'élément qu'on passe à emplace_back est bien entendu un thread (on manipule un vecteur de threads).
+
+Pour faire le rendez vous, il suffit simplement d'appeler la méthode meet.
+
+
+Pour la fonction à exécuter par le thread, il faut lui donner au moins un pointeur ou une référence (donc un pointeur) à l'instance de la classe RendezVous, et son numéro de création, pour qu'on puisse les distinguer les uns des autres.
+
+Pour faire dormir un thread, on se servira de la fonction std::this_thread::sleep_for
+Pour obtenir une durée en millisecondes à partir d'un entier, on se sert de la fonction std::chrono::milliseconds.
+Pour obtenir une quantité aléatoire entre a compris et b compris, on utilise :
+a + rand() % (b+1)
+
+On n'oublie pas de faire itérer le contenu de la fonction de travail trois fois comme la consigne le demande. Si on oublie, mais qu'on le fait dans le main, alors on ne sort jamais du programme. Le main attend les threads qui ne viendront jamais.
+
+**** Commentaire
+
+On a encore passé trop de temps sur cet exercice, qui est pourtant un exercice-type, qu'on est à peu près sûr d'avoir à l'examen.
+
+La création d'un pool de threads suit en fait toujours le même schéma :
+- On créé un vecteur de threads, on le met à la bonne taille
+- On passe au constructeur du thread la fonction à exécuter, ainsi que les arguments de cette fonction.
+
+Si on doit protéger des variables, on créer un mutex, et un unique_lock par dessus (si on ne veut pas avoir à penser à rendre le verrou quand on a fini).
+La manière la plus robuste d'implanter un verrou conditionné à partir d'un mutex, c'est de mettre en place une condition_variable, et d'appeler la méthode wait de la condition_variable de manière conditionnée, si on est censé bloquer, et d'appeler la méthode noify_all si on est censé réveiller les threads bloqués.
+Les threads appelleront la condition variable, si ils sortent de l'appel, ils pourront alors exécuter leur section critique.
+
+On n'aura théoriquement même pas besoin de rendre le verrou si on a bien utilisé unique_lock.
+
+Si un thread doit acquérir le même verrou potentiellement plusieurs fois, on se servira de recursive_mutex.
+
+Si on ne tient pas à se servir des condition_variable, l'objet mutex dispose de sa propre méthode de lock et de unlock.
+
+On doit bien penser à join les threads à la fin (simplement avec la méthode join()).
+
+*** Exercice 3
+
+On placera nos réponses ici.
+
+**** Question 1
+
+Combien de processus sont créés par ce programme, en comptant le processus initial, pour la valeur donnée N = 3 ?
+
+On a un processus au tout début du programme. Lors du premier tour de boucle (i=0), il créé un processus, qui lui-même créé un fils. On a donc 3 processus à la fin du premier tour de boucle.
+
+Les 3 processus rentrent dans la nouvelle boucle (i vaut la même valeur 1 pour les 3, donc la condition d'arrêt n'est pas remplie, donc on continue). Chacun de ces 3 processus en créé deux en plus, donc on a 6 processus en plus des 3 premiers à la fin de la boucle, soient 9 en tout.
+
+Les 9 processus rentrent dans la nouvelle boucle (i vaut la même valeur 2 pour les 9, donc la condition d'arrêt n'est pas remplie, donc on continue). Chacun de ces 9 processus en créé deux en plus, donc on a 18 processus en plus des 9 premiers à la fin de la boucle, soient 27 en tout.
+
+On a donc 27 processus pour N = 3.
+
+On en avait 3 pour N = 1 et 9 pour N = 2.
+
+On a 3^N processus créés pour N tours de boucle.
+
+Les wait sont placés après la création de tous les fils d'un processus, donc on peut parfaitement avoir 3^N processus exécutés en même temps.
+
+**** Question 2
+
+On doit modifier le programme pour s'assurer que chaque processus attend bien ses fils (et personne d'autre).
+
+
+
 ** TDTME1
 
 

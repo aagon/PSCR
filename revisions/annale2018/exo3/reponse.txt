@@ -1,0 +1,13 @@
+Q1 : Combien de processus sont crées pour N=3 ?
+
+Réponse :
+
+
+Q2 : Combien de processus sont crées en fonction de N ?
+
+Réponse :
+
+
+Q3 : Pour N=3; Combien a-t-on de processus au maximum en parallèle à un instant donné ?
+
+Réponse :
